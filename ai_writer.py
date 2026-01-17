@@ -3,13 +3,13 @@ import os
 import google.generativeai as genai
 import sys
 
-# --- CONFIGURACIÓN Y FUNCIONES AUXILIARES ---
 def guardar_salida(mensaje, nombre_archivo="newsletter_borrador.md"):
     print(mensaje)
     with open(nombre_archivo, "w", encoding="utf-8") as f:
         f.write(mensaje)
     sys.exit(0)
 
+# --- 1. CONFIGURACIÓN ---
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key: guardar_salida("❌ Error: Falta GEMINI_API_KEY.")
 
@@ -21,95 +21,107 @@ except Exception as e:
 FILE_PATH = "data/BoxScore_ACB_2025_Cumulative.csv"
 if not os.path.exists(FILE_PATH): guardar_salida("❌ No hay CSV de datos.")
 
-# --- CARGA Y PREPARACIÓN DE DATOS ---
+# --- 2. CARGA DE DATOS ---
 df = pd.read_csv(FILE_PATH)
 if 'Week' not in df.columns: guardar_salida("❌ CSV sin columna Week.")
 
-ultima_jornada = df['Week'].unique()[-1]
-df_week = df[df['Week'] == ultima_jornada]
-print(f"🤖 Analizando {ultima_jornada} con enfoque avanzado...")
+# Detectar última jornada
+jornadas = df['Week'].unique()
+ultima_jornada_label = jornadas[-1] # Ej: "Jornada 15"
+# Extraer el número de la jornada (ej: 15)
+try:
+    num_jornada = int(''.join(filter(str.isdigit, ultima_jornada_label)))
+except:
+    num_jornada = 0
 
-# --- 1. ANÁLISIS DE JUGADORES (MVP y Top) ---
-# Ordenamos por Game Score (GmSc) que es más moderna que la Valoración
-top_players = df_week.sort_values('GmSc', ascending=False).head(4)
-txt_players = ""
-for _, row in top_players.iterrows():
-    txt_players += f"- {row['Name']} ({row['Team']}): {row['PTS']}pts, {row['Reb_T']}reb, {row['AST']}ast. TS%: {row['TS%']}%. GmSc: {row['GmSc']}.\n"
+df_week = df[df['Week'] == ultima_jornada_label]
+print(f"🤖 Analizando {ultima_jornada_label} (MVP Real + Tendencias)...")
 
-# --- 2. ANÁLISIS DE EQUIPOS (NUEVO) ---
-# Agrupamos por equipo sumando estadísticas clave
-team_stats = df_week.groupby('Team').agg({
-    'PTS': 'sum', 'Reb_T': 'sum', 'AST': 'sum', 
-    'T3_M': 'sum', 'T3_A': 'sum',
-    'Game_Poss': 'mean', # Las posesiones son las mismas para todo el equipo
-    'Win': 'max' # 1 si ganaron, 0 si perdieron
-}).reset_index()
+# --- 3. LÓGICA MVP OFICIAL (VALORACIÓN + VICTORIA) ---
+# Filtramos jugadores que ganaron (Win = 1)
+ganadores = df_week[df_week['Win'] == 1]
 
-# Calculamos Eficiencia Ofensiva (Puntos por 100 posesiones)
-team_stats['ORTG'] = (team_stats['PTS'] / team_stats['Game_Poss']) * 100
-team_stats['TS_Percent'] = team_stats['PTS'] / (2 * (team_stats['PTS'] + 0.44 * team_stats['T3_A'])) # Aproximación rápida
+# Si por lo que sea no hay ganadores en la data, usamos a todos
+pool_mvp = ganadores if not ganadores.empty else df_week
 
-# Mejor Ataque
-best_offense = team_stats.sort_values('ORTG', ascending=False).iloc[0]
-# Equipo con más ritmo (Pace)
-fastest_team = team_stats.sort_values('Game_Poss', ascending=False).iloc[0]
-# Equipo bombardero (Más T3 intentados)
-bombers = team_stats.sort_values('T3_A', ascending=False).iloc[0]
+# El MVP es el de mayor VALORACIÓN (no GmSc)
+mvp_row = pool_mvp.sort_values('VAL', ascending=False).iloc[0]
 
-txt_teams = (
-    f"- Mejor Ataque: {best_offense['Team']} con {best_offense['ORTG']:.1f} puntos/100 posesiones.\n"
-    f"- Ritmo más alto: {fastest_team['Team']} ({fastest_team['Game_Poss']:.1f} posesiones).\n"
-    f"- Francotiradores: {bombers['Team']} tiró {bombers['T3_A']} triples (metió {bombers['T3_M']})."
+txt_mvp = (
+    f"NOMBRE: {mvp_row['Name']} ({mvp_row['Team']})\n"
+    f"STATS: {mvp_row['VAL']} de Valoración, {mvp_row['PTS']} puntos, {mvp_row['Reb_T']} rebotes.\n"
+    f"RESULTADO: Su equipo ganó."
 )
 
-# --- 3. EL "OUTSIDER" / CURIOSIDAD (NUEVO) ---
-# Buscamos un jugador de rotación (menos de 20 min) con alto impacto
-# O un especialista defensivo (muchos robos/tapones)
-micro_wave = df_week[(df_week['Min'].str.slice(0,2).astype(int) < 20) & (df_week['PTS'] > 12)]
-if not micro_wave.empty:
-    mw = micro_wave.sort_values('PTS', ascending=False).iloc[0]
-    txt_outsider = f"El 'Microondas': {mw['Name']} ({mw['Team']}) metió {mw['PTS']} puntos en solo {mw['Min']} minutos."
-else:
-    # Si no hay microondas, buscamos al "Muro" (Tapones + Robos > 3)
-    wall = df_week[(df_week['BLK'] + df_week['STL']) >= 4].sort_values('BLK', ascending=False)
-    if not wall.empty:
-        w = wall.iloc[0]
-        txt_outsider = f"El Muro: {w['Name']} sumó {w['BLK']} tapones y {w['STL']} robos."
-    else:
-        txt_outsider = "Sin anomalías estadísticas destacables esta semana."
+# --- 4. DESTACADOS SECUNDARIOS ---
+# Quitamos al MVP para no repetirlo
+resto = df_week[df_week['PlayerID'] != mvp_row['PlayerID']]
+# Top 2 por Valoración
+top_2 = resto.sort_values('VAL', ascending=False).head(2)
+txt_destacados = ""
+for _, row in top_2.iterrows():
+    txt_destacados += f"- {row['Name']} ({row['Team']}): {row['VAL']} VAL, {row['PTS']} pts.\n"
 
-# --- 4. GENERACIÓN DEL PROMPT (TONO HUMANO) ---
+# --- 5. DETECTAR RACHAS (FORM STATE) PARA EL CIERRE ---
+# Queremos ver quién está "on fire" en los últimos 3 partidos
+jugadores_hot = []
+
+# Si tenemos suficientes datos históricos
+if len(jornadas) >= 3:
+    # Cogemos las últimas 3 jornadas
+    ultimas_3 = jornadas[-3:]
+    df_last_3 = df[df['Week'].isin(ultimas_3)]
+    
+    # Calculamos media de VAL por jugador
+    medias = df_last_3.groupby(['Name', 'Team'])['VAL'].mean().reset_index()
+    # Filtramos los que tengan media > 20 (Estrellas en forma)
+    en_forma = medias[medias['VAL'] > 20].sort_values('VAL', ascending=False).head(3)
+    
+    for _, row in en_forma.iterrows():
+        jugadores_hot.append(f"{row['Name']} ({row['Team']}) promedia {row['VAL']:.1f} VAL en los últimos 3 partidos.")
+
+txt_rachas = "\n".join(jugadores_hot) if jugadores_hot else "No hay datos suficientes de rachas aún."
+
+# --- 6. DATOS DE EQUIPO (Eficiencia) ---
+team_stats = df_week.groupby('Team').agg({'PTS': 'sum', 'Game_Poss': 'mean', 'T3_M': 'sum', 'T3_A': 'sum'}).reset_index()
+team_stats['ORTG'] = (team_stats['PTS'] / team_stats['Game_Poss']) * 100
+mejor_ataque = team_stats.sort_values('ORTG', ascending=False).iloc[0]
+
+# --- 7. PROMPT AVANZADO ---
 prompt = f"""
-Actúa como un analista de datos de baloncesto senior (estilo Zach Lowe o Kirk Goldsberry).
-Tu objetivo es escribir una newsletter analítica, sobria pero interesante.
-⛔ PROHIBIDO: Usar frases clichés como "festival de baloncesto", "amigos del balón naranja", "estratosférico", "buenos días".
-✅ PERMITIDO: Usar jerga técnica (Spacing, Rim protection, Eficiencia, Pace) y un tono conversacional directo.
+Actúa como un periodista experto de la ACB (estilo Gigantes del Basket).
+Escribe una crónica de la {ultima_jornada_label}.
 
-DATOS DE LA {ultima_jornada}:
+DATOS OFICIALES:
+🏆 MVP DE LA JORNADA (Oficial por Valoración):
+{txt_mvp}
 
-TOP JUGADORES (Contexto):
-{txt_players}
+🌟 EL QUINTETO DE LA SEMANA (Otros destacados):
+{txt_destacados}
 
-ANÁLISIS DE EQUIPOS (Contexto):
-{txt_teams}
+📊 DATO TÁCTICO:
+El mejor ataque fue {mejor_ataque['Team']} con un Ratio Ofensivo de {mejor_ataque['ORTG']:.1f} puntos/100 posesiones.
 
-LA RAREZA ESTADÍSTICA (Outsider):
-{txt_outsider}
+🔥 JUGADORES EN RACHA (Para la próxima jornada):
+{txt_rachas}
 
-ESTRUCTURA DEL ARTÍCULO (En Markdown):
-1. **Titular**: Que sea un juego de palabras inteligente sobre el MVP o el equipo dominante.
-2. **El Foco (MVP)**: Analiza por qué sus números son buenos (menciona el True Shooting o el impacto global, no solo los puntos).
-3. **Pizarra Táctica (Equipos)**: Comenta qué equipo ha dominado el ritmo o el ataque. Usa los datos de ORTG (Puntos por 100 posesiones).
-4. **Under the Radar (El Outsider)**: Menciona brevemente al jugador sorpresa.
-5. **Cierre**: Una frase seca y directa sobre lo que esperar la próxima semana.
+INSTRUCCIONES DE ESTRUCTURA:
+1. **Titular**: Épico, mencionando al MVP.
+2. **El MVP**: Céntrate en su Valoración y dominio. Confirma que fue clave en la victoria.
+3. **Zona Noble**: Repaso rápido a los otros destacados y al dato táctico del mejor equipo.
+4. **🔭 Radar de la Jornada {num_jornada + 1} (El Cierre)**: 
+   - No digas "veremos qué pasa".
+   - Usa los datos de "JUGADORES EN RACHA" para advertir a los lectores de a quién vigilar la semana que viene.
+   - Di que estos jugadores llegan en un estado de forma terrorífico.
+   - Despide con una firma propia de newsletter (ej: "Hasta el próximo bocinazo").
 
-Escribe en español de España. Sé crítico si hace falta.
+Escribe en español de España. Tono profesional pero apasionado.
 """
 
-# --- 5. LLAMADA A GEMINI ---
-nombre_modelo = 'gemini-2.5-flash' # Tu modelo potente
+# --- 8. GENERACIÓN ---
+nombre_modelo = 'gemini-2.5-flash'
 try:
-    print(f"⚡ Generando análisis con {nombre_modelo}...")
+    print(f"⚡ Generando newsletter con {nombre_modelo}...")
     model = genai.GenerativeModel(nombre_modelo)
     response = model.generate_content(prompt)
     guardar_salida(response.text)
