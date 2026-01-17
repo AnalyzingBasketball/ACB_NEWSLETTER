@@ -48,7 +48,7 @@ team_stats['ORTG'] = (team_stats['PTS'] / team_stats['Game_Poss']) * 100
 best_offense = team_stats.sort_values('ORTG', ascending=False).iloc[0]
 txt_teams = f"Mejor Ataque: {best_offense['Team']} ({best_offense['ORTG']:.1f} pts/100 poss)."
 
-# --- 4. TENDENCIAS (CON ASISTENCIAS) ---
+# --- 4. TENDENCIAS (SOLUCIÓN DEFINITIVA AST) ---
 jornadas = df['Week'].unique()
 txt_trends = "Datos insuficientes para tendencias."
 
@@ -56,21 +56,28 @@ if len(jornadas) >= 3:
     last_3 = jornadas[-3:]
     df_last = df[df['Week'].isin(last_3)]
     
-    # AQUI ESTÁ EL CAMBIO: Añadimos 'Assist' al cálculo
-    # (Si tu CSV usa otro nombre como 'AST', cámbialo aquí, pero suele ser 'Assist')
-    try:
-        cols_to_mean = ['VAL', 'PTS', 'Reb_T', 'Assist']
-        means = df_last.groupby(['Name', 'Team'])[cols_to_mean].mean().reset_index()
+    # 1. Definimos las columnas que SIEMPRE están
+    cols_calc = ['VAL', 'PTS', 'Reb_T']
+    
+    # 2. Comprobamos si existe 'AST' (que sí existe, pero por seguridad)
+    usa_ast = 'AST' in df.columns
+    if usa_ast:
+        cols_calc.append('AST')
+    
+    # 3. Calculamos medias
+    means = df_last.groupby(['Name', 'Team'])[cols_calc].mean().reset_index()
+    hot = means.sort_values('VAL', ascending=False).head(5)
+    
+    txt_trends = ""
+    for _, row in hot.iterrows():
+        # Construimos la línea limpia
+        linea = f"- {row['Name']} ({row['Team']}): {row['VAL']:.1f} VAL, {row['PTS']:.1f} PTS, {row['Reb_T']:.1f} REB"
         
-        hot = means.sort_values('VAL', ascending=False).head(5)
-        txt_trends = ""
-        for _, row in hot.iterrows():
-            # AQUI AÑADIMOS LAS ASISTENCIAS AL TEXTO
-            txt_trends += f"- {row['Name']} ({row['Team']}): {row['VAL']:.1f} VAL, {row['PTS']:.1f} PTS, {row['Reb_T']:.1f} REB, {row['Assist']:.1f} AST.\n"
+        # Añadimos asistencias si existen
+        if usa_ast:
+            linea += f", {row['AST']:.1f} AST"
             
-    except KeyError:
-        # Por si acaso la columna se llama diferente en tu CSV
-        txt_trends = "No pude encontrar la columna de asistencias (Assist)."
+        linea += ".\n"
 
 # --- 5. PROMPT ---
 prompt = f"""
@@ -80,7 +87,7 @@ DATOS:
 MVP: {txt_mvp}
 TOP: {txt_rest}
 EQUIPO: {txt_teams}
-TENDENCIAS:
+TENDENCIAS (Medias ult. 3 jornadas):
 {txt_trends}
 
 ESTRUCTURA OBLIGATORIA (Respeta los saltos de línea):
@@ -98,7 +105,7 @@ ESTRUCTURA OBLIGATORIA (Respeta los saltos de línea):
 **4. Proyección Estadística (Tendencias)**
 A continuación, los jugadores a vigilar la próxima semana por su estado de forma (Medias últimas 3 jornadas):
 
-[INSTRUCCIÓN CRÍTICA: Escribe la lista de tendencias usando saltos de línea reales. NO lo pongas todo en un párrafo.]
+[INSTRUCCIÓN CRÍTICA: Copia la lista de tendencias TAL CUAL aparece en los datos. Usa una lista con guiones. NO añadas texto extra como 'Media ult. 3 partidos' en cada línea.]
 {txt_trends}
 
 ---
@@ -111,6 +118,7 @@ try:
     response = model.generate_content(prompt)
     
     texto_final = response.text
+    # Limpieza final para asegurar formato lista
     texto_final = texto_final.replace(". -", ".\n\n-").replace(": -", ":\n\n-")
     
     guardar_salida(texto_final)
