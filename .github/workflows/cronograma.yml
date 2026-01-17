@@ -29,17 +29,14 @@ jobs:
 
     - name: 2. Ejecutar Redactor IA (Gemini)
       env:
-        # AQUÍ ESTÁ EL CAMBIO IMPORTANTE:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: python ai_writer.py
 
-- name: Guardar datos y borrador
+    - name: Guardar datos y borrador
       run: |
         git config --global user.name 'ACB Bot'
         git config --global user.email 'bot@noreply.github.com'
-        # Añadimos todo lo que haya en data y el borrador (si existen)
         git add data/ || true
         git add newsletter_borrador.md || true
-        # Hacemos commit solo si hay algo nuevo
         git commit -m "Newsletter generada con Gemini" || echo "Nada nuevo que guardar"
         git push
