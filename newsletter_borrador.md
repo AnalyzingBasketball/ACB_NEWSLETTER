@@ -1,33 +1,28 @@
-¡Desde la redacción de Gigantes, vuestro cronista de cabecera! La Jornada 15 de la Liga Endesa nos ha dejado sin aliento, una vez más, confirmando que nuestra ACB es una liga de emociones fuertes y talentos desbordantes. Pero si un nombre debe grabarse a fuego, es el del eterno **Ante Tomic**, que no solo reinó, sino que sentó cátedra.
+**INFORME TÉCNICO: Jornada 15**
+
+**1. Análisis de Impacto Individual (MVP)**
+
+**A. Tomic (JOV)** fue el jugador con mayor impacto en la Jornada 15, registrando una **VALORACIÓN** de 39. Su rendimiento ofensivo se caracterizó por una **True Shooting (TS%)** del **82.6%** y una **Effective Field Goal (eFG%)** del **90.9%**, indicadores de una excepcional eficiencia en sus intentos a canasta. Con un **Usage Rate (USG%)** del **152.4%**, **A. Tomic** demostró ser el foco ofensivo principal de su equipo, asumiendo un volumen significativo de posesiones sin comprometer la eficiencia. Su **Game Score** de **22.8** corrobora la magnitud de su producción estadística. El **+/- en pista de 8** indica un impacto positivo directo en el diferencial de puntos de su equipo durante su presencia en el juego.
+
+**2. Cuadro de Honor Estadístico**
+
+Otros jugadores con desempeño individual destacado en la Jornada 15 incluyen:
+*   **R. Obasohan (MAN)**: 35 **VALORACIÓN**, **85.5% TS** con un **USG%** del **170.5%**.
+*   **C. Hunt (JOV)**: 32 **VALORACIÓN**, **109.6% TS** con un **USG%** del **154.0%**.
+*   **E. Happ (BUR)**: 30 **VALORACIÓN**, **61.2% TS** con un **USG%** del **143.8%**.
+
+**3. Desempeño Colectivo (ORTG & Pace)**
+
+En el análisis colectivo, el **BAR** exhibió la máxima eficiencia ofensiva de la jornada, con un **Offensive Rating (ORTG)** de **159.1** puntos por cada 100 posesiones. Este rendimiento estuvo respaldado por un **57.7%** de acierto en triples (15/26), lo que indica una ejecución de ataque superior en la conversión de oportunidades de tiro exterior. El **BUR** registró el ritmo de juego más elevado, con **83.5** posesiones, señalando una preferencia por un estilo de juego de alta velocidad.
+
+**4. Proyección Estadística (Tendencias)**
+
+El análisis de las últimas tres jornadas revela una consistencia en el rendimiento de los siguientes activos:
+*   **A. Tomic (JOV)**: Promedio de **22.0 VALORACIÓN**, **63.1% TS**, y **136.6% USG**.
+*   **R. Obasohan (MAN)**: Promedio de **21.3 VALORACIÓN**, **67.8% TS**, y **152.5% USG**.
+*   **D. Brankovic (BRE)**: Promedio de **20.7 VALORACIÓN**, **83.5% TS**, y **124.1% USG**.
+
+Estos jugadores mantienen métricas de eficiencia y volumen de uso consistentes, sugiriendo un impacto sostenido en sus respectivas formaciones.
 
 ---
-
-## ¡TOMIC, LA LEYENDA VIVA, DOMINA LA PINTURA Y GUÍA AL JOVENTUT HACIA UNA VICTORIA DE PURA ÉPICA!
-
-La Jornada 15 ha sido testigo de una exhibición que pasará a los anales de nuestra competición. **Ante Tomic (JOV)**, el pívot croata, se alzó con el merecido galardón de MVP de la jornada, y lo hizo a lo grande. Con una estratosférica **valoración de 39**, Tomic no solo jugó al baloncesto; lo dictó. Sus **24 puntos** fueron una declaración de intenciones, anotando con la elegancia y la solvencia que solo los grandes maestros poseen. Pero su impacto no se detuvo ahí: con **15 rebotes** (un doble-doble de época), controló ambas pinturas con una autoridad incontestable, erigiéndose como el faro que iluminó el camino de la Penya hacia una victoria que confirma el buen momento de los verdinegros. Una actuación que trasciende las estadísticas y que evidencia la calidad imperecedera de un jugador llamado a dejar huella eterna. Fue el motor, el corazón y el alma de su equipo cuando más lo necesitaban.
-
----
-
-### 🌟 Zona Noble: Destellos de Genialidad y Eficiencia Bávara
-
-Pero Tomic no estuvo solo en su empeño por deslumbrar. Otros nombres brillaron con luz propia, recordándonos la riqueza de nuestra Liga Endesa. **R. Obasohan (MAN)** firmó una actuación memorable con **35 de valoración** y **32 puntos**, una exhibición pura de puntos, energía y coraje que mantuvo a su equipo en vilo. Y qué decir de su compañero de batallas en el quinteto de la semana, **C. Hunt (JOV)**, que con **32 de valoración** y unos escandalosos **35 puntos** secundó a su capitán Tomic para formar una pareja interior demoledora que dinamitó cualquier defensa rival.
-
-Y si hablamos de eficiencia colectiva, el **Barça** volvió a dar una lección de baloncesto total. Los azulgranas firmaron el mejor ataque de la jornada, con un demoledor **Ratio Ofensivo de 159.1 puntos por cada 100 posesiones**. Una auténtica máquina de generar ventajas y anotar, demostrando por qué son uno de los grandes dominadores de la competición.
-
----
-
-### 🔭 Radar de la Jornada 16: ¡Atentos a los Tiburones!
-
-Con la Jornada 15 ya en los libros, nuestros radares ya apuntan con precisión quirúrgica a lo que viene. Y hay nombres que llegan al próximo asalto en un estado de forma, sencillamente, **terrorífico**.
-
-**Andrej Tomic (JOV)**, con una media de **22.0 de valoración** en los últimos tres partidos, es una garantía de espectáculo y dominio interior. Tras su exhibición esta semana, no le quiten el ojo de encima; su inspiración no es flor de un día.
-
-Le acompaña en este selecto grupo **R. Obasohan (MAN)**, que encadena **21.3 de valoración** en sus últimas tres apariciones. Un auténtico torbellino anotador y generador de ventajas, capaz de descoser cualquier defensa con su descaro.
-
-Y ojo, mucho ojo, a **D. Brankovic (BRE)**. Con una impresionante media de **20.7 de valoración** en los últimos tres encuentros, el jugador del Breogán se está erigiendo como una amenaza constante, un factor desequilibrante que pocos esperan y que puede explotar en cualquier momento.
-
-Estén muy atentos, aficionados, porque estos chicos no vienen a pasearse. Vienen a dejarlo todo en la cancha, y su racha actual es un claro aviso a navegantes.
-
----
-
-¡Hasta el próximo bocinazo! Vuestro cronista de la ACB.
+Firma: Analyzing Basketball
