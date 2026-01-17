@@ -7,9 +7,8 @@ import sys
 import pandas as pd
 import requests
 
-# --- 1. TUS ENLACES (REVISADOS) ---
-# Asegúrate de que tu archivo en GitHub sea 'logo.jpg'. Si es png, cambia a .png
-URL_LOGO = "https://raw.githubusercontent.com/AnalyzingBasketball/acb-newsletter-bot/main/logo.jpg" 
+# --- 1. TU URL DEL LOGO (LA BUENA) ---
+URL_LOGO = "https://raw.githubusercontent.com/AnalyzingBasketball/acb-newsletter-bot/refs/heads/main/logo.png"
 
 # --- 2. CONFIGURACIÓN ---
 gmail_user = os.environ.get("GMAIL_USER")
@@ -18,9 +17,9 @@ url_suscriptores = os.environ.get("URL_SUSCRIPTORES")
 webhook_make = os.environ.get("MAKE_WEBHOOK_URL")
 
 if not gmail_user or not gmail_password:
-    sys.exit("❌ Error: Faltan credenciales de Gmail.")
+    sys.exit("❌ Error: Faltan credenciales.")
 
-# --- 3. LEER EL INFORME GENERADO ---
+# --- 3. LEER INFORME ---
 if not os.path.exists("newsletter_borrador.md"):
     sys.exit("❌ No hay informe generado.")
 
@@ -29,7 +28,7 @@ with open("newsletter_borrador.md", "r", encoding="utf-8") as f:
 
 titulo_redes = md_content.split('\n')[0].replace('#', '').strip()
 
-# --- 4. TEXTO PARA LINKEDIN ---
+# --- 4. LINKEDIN ---
 texto_linkedin = f"""🏀 {titulo_redes}
 
 📊 Nuevo análisis de datos disponible.
@@ -37,20 +36,16 @@ Lee el informe completo y suscríbete aquí: https://analyzingbasketball.wixsite
 
 #ACB #DataScouting #AnalyzingBasketball"""
 
-# --- 5. ENVIAR A MAKE (LINKEDIN) ---
 if webhook_make:
-    print("📡 Enviando post a LinkedIn...")
     try:
         requests.post(webhook_make, json={"texto": texto_linkedin})
-        print("✅ Publicado en LinkedIn correctamente.")
-    except Exception as e:
-        print(f"⚠️ Error conectando con Make: {e}")
+        print("✅ LinkedIn OK")
+    except: pass
 
-# --- 6. PREPARAR NEWSLETTER ---
-print("📥 Preparando Newsletter...")
+# --- 5. EMAIL ---
+print("📥 Enviando Email...")
 html_content = markdown.markdown(md_content)
 
-# Plantilla HTML
 plantilla = f"""
 <html><body style='font-family: Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;'>
 <div style='background-color: #ffffff; max-width: 600px; margin: 0 auto; border: 1px solid #dddddd;'>
@@ -76,39 +71,29 @@ plantilla = f"""
 </body></html>
 """
 
-# --- 7. ENVIAR EMAILS ---
+# Envío
 lista_emails = []
 if url_suscriptores:
     try:
         df = pd.read_csv(url_suscriptores, on_bad_lines='skip', engine='python')
         col = next((c for c in df.columns if "@" in str(df[c].iloc[0])), None)
-        if col:
-            lista_emails = df[col].dropna().unique().tolist()
-    except Exception as e:
-        print(f"⚠️ Nota: No se pudo leer la lista de suscriptores ({e}). Se enviará solo al admin.")
+        if col: lista_emails = df[col].dropna().unique().tolist()
+    except: pass
 
-if gmail_user not in lista_emails:
-    lista_emails.append(gmail_user)
+if gmail_user not in lista_emails: lista_emails.append(gmail_user)
 
-print(f"📧 Enviando newsletter a {len(lista_emails)} personas...")
+server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+server.login(gmail_user, gmail_password)
 
-try:
-    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-    server.login(gmail_user, gmail_password)
+for email in lista_emails:
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"Analyzing Basketball <{gmail_user}>"
+        msg['To'] = email.strip()
+        msg['Subject'] = f"🏀 Informe: {titulo_redes}"
+        msg.attach(MIMEText(plantilla, 'html'))
+        server.sendmail(gmail_user, email.strip(), msg.as_string())
+    except: continue
 
-    for email in lista_emails:
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = f"Analyzing Basketball <{gmail_user}>"
-            msg['To'] = email.strip()
-            msg['Subject'] = f"🏀 Informe: {titulo_redes}"
-            msg.attach(MIMEText(plantilla, 'html'))
-            server.sendmail(gmail_user, email.strip(), msg.as_string())
-        except:
-            continue
-
-    server.quit()
-    print("✅ TODO COMPLETADO CON ÉXITO.")
-
-except Exception as e:
-    sys.exit(f"❌ Error crítico de conexión Gmail: {e}")
+server.quit()
+print("✅ TODO COMPLETADO.")
