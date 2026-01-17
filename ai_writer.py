@@ -48,23 +48,25 @@ team_stats['ORTG'] = (team_stats['PTS'] / team_stats['Game_Poss']) * 100
 best_offense = team_stats.sort_values('ORTG', ascending=False).iloc[0]
 txt_teams = f"Mejor Ataque: {best_offense['Team']} ({best_offense['ORTG']:.1f} pts/100 poss)."
 
-# --- 4. TENDENCIAS (SIN BLOQUEOS) ---
-# Cogemos todas las jornadas que haya, máximo 3
+# --- 4. TENDENCIAS (SIN BLOQUEOS + ASISTENCIAS) ---
 jornadas = df['Week'].unique()
-last_3 = jornadas[-3:]
+# Cogemos hasta las últimas 3 jornadas disponibles (si hay 1, coge 1)
+last_3 = jornadas[-3:] 
 df_last = df[df['Week'].isin(last_3)]
 
-# Definimos las columnas (ya verificado que tienes 'AST')
+# Columnas a calcular (incluyendo AST)
 cols_calc = ['VAL', 'PTS', 'Reb_T']
 if 'AST' in df.columns:
     cols_calc.append('AST')
 
 # Calculamos medias
 means = df_last.groupby(['Name', 'Team'])[cols_calc].mean().reset_index()
+# Ordenamos por valoración media
 hot = means.sort_values('VAL', ascending=False).head(5)
 
 txt_trends = ""
 for _, row in hot.iterrows():
+    # Construimos la línea de datos
     linea = f"- {row['Name']} ({row['Team']}): {row['VAL']:.1f} VAL, {row['PTS']:.1f} PTS, {row['Reb_T']:.1f} REB"
     if 'AST' in df.columns:
         linea += f", {row['AST']:.1f} AST"
@@ -78,7 +80,7 @@ DATOS:
 MVP: {txt_mvp}
 TOP: {txt_rest}
 EQUIPO: {txt_teams}
-TENDENCIAS (Medias recientes):
+TENDENCIAS (Jugadores en racha - Medias recientes):
 {txt_trends}
 
 ESTRUCTURA OBLIGATORIA (Usa saltos de línea para las listas):
@@ -96,7 +98,7 @@ ESTRUCTURA OBLIGATORIA (Usa saltos de línea para las listas):
 **4. Proyección Estadística (Tendencias)**
 A continuación, los jugadores a vigilar la próxima semana por su estado de forma (Medias últimas jornadas):
 
-[INSTRUCCIÓN CRÍTICA: Copia la lista de tendencias TAL CUAL. Usa guiones para crear una lista vertical. NO añadas texto extra como 'Media ult. 3 partidos'. Solo los datos.]
+[INSTRUCCIÓN CRÍTICA: Copia la lista de tendencias TAL CUAL. Usa guiones para crear una lista vertical. NO añadas texto extra como 'Media ult. 3 partidos'. Solo los datos numéricos.]
 {txt_trends}
 
 ---
