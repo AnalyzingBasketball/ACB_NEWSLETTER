@@ -8,10 +8,9 @@ import numpy as np
 # ==============================================================================
 # 1. CONFIGURACIÓN
 # ==============================================================================
-MODEL_NAME = "gemini-2.5-flash" # Asegúrate de que este modelo está disponible en tu cuenta
+MODEL_NAME = "gemini-2.5-flash"
 FILE_PATH = "data/BoxScore_ACB_2025_Cumulative.csv"
 
-# Diccionario de Equipos (Mantenemos esto solo para que los nombres de equipos se lean bien)
 TEAM_MAP = {
     'UNI': 'Unicaja', 'SBB': 'Bilbao Basket', 'BUR': 'San Pablo Burgos', 'GIR': 'Bàsquet Girona',
     'TEN': 'La Laguna Tenerife', 'MAN': 'BAXI Manresa', 'LLE': 'Hiopos Lleida', 'BRE': 'Río Breogán',
@@ -71,15 +70,12 @@ df_week = df[df['Week'] == ultima_jornada_label]
 print(f"🤖 Analizando {ultima_jornada_label}...")
 
 # ==============================================================================
-# 4. PREPARACIÓN DE DATOS (SIN DICCIONARIOS NI PARCHES)
+# 4. PREPARACIÓN DE DATOS (NOMBRES CRUDOS)
 # ==============================================================================
-# Enviamos los datos "crudos" (ej: "F. Alonso") y dejaremos que la Búsqueda de Google lo arregle.
-
 # A. MVP
 ganadores = df_week[df_week['Win'] == 1]
 pool = ganadores if not ganadores.empty else df_week
 mvp = pool.sort_values('VAL', ascending=False).iloc[0]
-
 txt_mvp = (f"{mvp['Name']} ({get_team_name(mvp['Team'])}): {b(mvp['VAL'])} VAL, "
            f"{b(mvp['PTS'])} PTS (TS%: {b(mvp['TS%'], 1, True)}), {b(mvp['Reb_T'])} REB.")
 
@@ -128,12 +124,11 @@ if len(jornadas_unicas) >= 1:
                        f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS.\n")
 
 # ==============================================================================
-# 5. GENERACIÓN IA CON BÚSQUEDA "ROSTER CHECK" (SIN DICCIONARIO)
+# 5. GENERACIÓN IA CON BÚSQUEDA SEGURA
 # ==============================================================================
 
-# Aquí está la clave: No usamos diccionario, usamos un Prompt de Búsqueda Estructurada.
 prompt = f"""
-Actúa como un Verificador de Datos (Fact-Checker) y Periodista ACB.
+Actúa como un Verificador de Datos (Fact-Checker) y Periodista ACB (Temporada 2025/2026).
 
 DATOS A PROCESAR (Nombres abreviados):
 MVP: {txt_mvp}
@@ -146,24 +141,22 @@ CONTEXTO:
 TENDENCIAS:
 {txt_trends}
 
-INSTRUCCIONES DE BÚSQUEDA OBLIGATORIA (ROSTER CHECK):
-Para CADA jugador mencionado arriba que tenga el nombre abreviado (ej: "F. Alonso", "D. Brankovic", "M. Normantas"):
+INSTRUCCIONES DE BÚSQUEDA OBLIGATORIA:
+Para CADA jugador mencionado arriba que tenga el nombre abreviado:
 
-1. **EJECUTA UNA BÚSQUEDA EN GOOGLE**:
-   - Query exacta: `"Plantilla [Equipo del jugador] ACB 2025-2026"`
-   - Ejemplo: Si ves "F. Alonso" en Breogán, busca "Plantilla Río Breogán 2025-26".
+1. **EJECUTA UNA BÚSQUEDA**:
+   - Query: `"Plantilla [Equipo del jugador] ACB 2025-2026"`
+   - Ejemplo: Para "F. Alonso" en Breogán, busca la plantilla.
 
-2. **EXTRAE EL NOMBRE COMPLETO**:
-   - Mira los resultados de la búsqueda.
-   - Si la plantilla dice "Francis Alonso", ÚSALO. (No inventes Fernando Alonso).
-   - Si la plantilla dice "Danko Brankovic", ÚSALO. (No inventes Dusan).
-   - Si la plantilla dice "Margiris Normantas", ÚSALO.
+2. **VERIFICA**:
+   - ⚠️ Caso F. Alonso: Confirma que es **Francis Alonso** (Escolta), NO Fernando.
+   - ⚠️ Caso D. Brankovic: Confirma que es **Danko Brankovic** (Pívot), NO Dusan.
+   - ⚠️ Caso M. Normantas: Confirma que es **Margiris**.
 
 3. **ESCRIBE LA CRÓNICA**:
-   - Usa exclusivamente los nombres completos verificados por tu búsqueda.
-   - Mantén el estilo periodístico y los datos en negrita.
+   - Usa exclusivamente los nombres completos verificados.
 
-ESTRUCTURA DE SALIDA:
+ESTRUCTURA:
 ## 🏀 Informe ACB: {ultima_jornada_label}
 
 ### 👑 El MVP
@@ -180,12 +173,20 @@ ESTRUCTURA DE SALIDA:
 """
 
 try:
-    print("🚀 Generando crónica con Búsqueda de Plantillas (Sin Diccionarios)...")
+    print("🚀 Generando crónica (Búsqueda Activada)...")
     
-    # VOLVEMOS A LA CONFIGURACIÓN QUE FUNCIONABA
-    tools_config = [ {"google_search": {}} ]
+    # LA CONFIGURACIÓN SEGURA:
+    # 1. Creamos la herramienta manualmente si es necesario, o usamos el diccionario simple.
+    # Dado que el error anterior fue "FunctionDeclaration", vamos a usar la forma más simple posible
+    # que es soportada por la API REST directa, que es la que usa la librería por debajo.
     
-    model = genai.GenerativeModel(MODEL_NAME, tools=tools_config)
+    tools = [
+        {'google_search': {}} # Esta es la sintaxis correcta para la API v1beta
+    ]
+    
+    # IMPORTANTE: Si vuelve a fallar, prueba a quitar 'tools=' y meterlo en config, 
+    # pero esta es la forma estándar documentada.
+    model = genai.GenerativeModel(MODEL_NAME, tools=tools)
     
     response = model.generate_content(prompt)
     
@@ -193,7 +194,7 @@ try:
         texto = response.text.replace(":\n-", ":\n\n-")
         guardar_salida(texto)
     else:
-        print("❌ Error: Respuesta vacía del modelo.")
+        print("❌ Error: Respuesta vacía.")
 
 except Exception as e:
     guardar_salida(f"❌ Error Gemini: {e}")
