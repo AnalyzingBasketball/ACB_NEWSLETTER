@@ -12,7 +12,7 @@ import urllib.parse  # <--- NUEVO: Para limpiar el email en la URL
 URL_LOGO = "https://raw.githubusercontent.com/AnalyzingBasketball/acb-newsletter-bot/refs/heads/main/logo.png"
 
 # 🔴 PEGA AQUÍ LA URL DE TU FORMULARIO TALLY (El que creaste con el campo hidden 'email')
-URL_TALLY_BAJA = "https://tally.so/r/TU_CODIGO_AQUI" 
+URL_TALLY_BAJA = "https://tally.so/r/GxpaYZ" 
 
 gmail_user = os.environ.get("GMAIL_USER")
 gmail_password = os.environ.get("GMAIL_PASSWORD")
