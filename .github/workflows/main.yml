@@ -2,8 +2,8 @@ name: Generar Newsletter ACB
 
 on:
   schedule:
-# Minuto 34, Hora 09 (UTC) -> 10:34 en España (invierno)
-    - cron: '34 9 * * 1'
+# Minuto 34, Hora 08 (UTC) -> 09:34 en España (invierno)
+    - cron: '34 8 * * 1'
   workflow_dispatch: # Botón manual
 
 permissions:
