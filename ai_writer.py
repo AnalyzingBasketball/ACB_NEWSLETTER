@@ -455,13 +455,16 @@ txt_trends = ""
 if len(jornadas_unicas) >= 1:
     last_3 = jornadas_unicas[-3:]
     df_last = df[df['Week'].isin(last_3)]
-    means = df_last.groupby(['Name', 'Team'])[['VAL', 'PTS', 'TS%']].mean().reset_index()
+    # --------------------------------------------------------------------------
+    # MODIFICACIÓN: AÑADIDO 'AST' A LA MEDIA Y AL TEXTO DE SALIDA
+    # --------------------------------------------------------------------------
+    means = df_last.groupby(['Name', 'Team'])[['VAL', 'PTS', 'AST', 'TS%']].mean().reset_index()
     hot = means.sort_values('VAL', ascending=False).head(5)
     for _, row in hot.iterrows():
         # --- Limpieza de tendencias ---
         t_name = clean_name(row['Name'])
         txt_trends += (f"- {t_name} ({get_team_name(row['Team'], False)}): "
-                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS.\n")
+                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, {b(row['AST'], 1)} AST.\n")
 
 # ==============================================================================
 # 6. GENERACIÓN IA (TEXTO PURO, SIN HERRAMIENTAS, 100% FIABLE)
