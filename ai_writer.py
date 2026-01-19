@@ -471,7 +471,7 @@ if len(jornadas_unicas) >= 1:
 # ==============================================================================
 
 prompt = f"""
-Actúa como Periodista Deportivo experto en la Liga Endesa (ACB).
+Actúa como Periodista Deportivo experto en la Liga Endesa (ACB) y Copywriter de Email Marketing viral.
 
 DATOS DE LA JORNADA (Nombres ya verificados):
 MVP: {txt_mvp}
@@ -485,11 +485,13 @@ TENDENCIAS:
 {txt_trends}
 
 INSTRUCCIONES:
-1. **RESPETA LOS NOMBRES**: Úsalos tal cual aparecen en los datos de arriba (ya están corregidos: ej: "Francis Alonso").
-2. **NARRATIVA**: Escribe una crónica vibrante y densa en datos.
-3. **POSICIONES**: Si no estás seguro de la posición de un jugador, usa términos genéricos como "la figura", "el referente", "el exterior/interior".
+1. **PRIMERA LÍNEA OBLIGATORIA**: Escribe una frase corta (máx 50 caracteres), impactante y estilo "clickbait" que resuma lo más loco de la jornada. EMPIEZA LA LÍNEA CON "ASUNTO:".
+2. **RESPETA LOS NOMBRES**: Úsalos tal cual aparecen arriba.
+3. **NARRATIVA**: Crónica vibrante.
 
-ESTRUCTURA DE SALIDA:
+ESTRUCTURA DE SALIDA (ESTRICTA):
+ASUNTO: [Aquí tu frase clickbait increíble]
+
 ## 🏀 Informe ACB: {ultima_jornada_label}
 
 ### 👑 El MVP
