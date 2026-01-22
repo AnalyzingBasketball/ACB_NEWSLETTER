@@ -35,17 +35,16 @@ jobs:
         URL_SUSCRIPTORES: ${{ secrets.URL_SUSCRIPTORES }}
         MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
       run: python check_status.py
-
+      
     - name: Guardar cambios en Data
       run: |
         git config --global user.name 'ACB Bot'
         git config --global user.email 'bot@noreply.github.com'
         
-        # 1. Logs de control
-        git add data/log.txt data/buffer_control.txt
-        
-        # 2. EL CSV ACTUALIZADO (Nombre exacto que genera tu scraper)
-        git add data/BoxScore_ACB_2025_Cumulative.csv
+        # CAMBIO CLAVE AQUÍ:
+        # En vez de listar archivos uno a uno, añadimos TODA la carpeta data
+        # Esto maneja automáticamente si se crean, modifican o borran archivos dentro.
+        git add data/
         
         # Commit y Push (solo si hubo cambios)
         git commit -m "Auto: Update Data & Status" || exit 0
