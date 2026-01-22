@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 # ==============================================================================
 TEMPORADA = '2025'
 COMPETICION = '1'
-HORAS_BUFFER = 4
+HORAS_BUFFER = 10
 LOG_FILE = "data/log.txt"
 BUFFER_FILE = "data/buffer_control.txt" # Archivo temporal para contar las horas
 
