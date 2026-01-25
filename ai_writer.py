@@ -155,7 +155,7 @@ CORRECCIONES_VIP = {
     "G. Ferrando": "Guillem Ferrando",
     "J. Fernández": "Juan Fernández",
     "M. Fjellerup": "Máximo Fjellerup",
-    "M. Geben": "Martin Geben",
+    "M. Geben": "Martinas Geben",
     "M. Hughes": "Michael Hughes",
     "M. Susinskas": "Mindaugas Susinskas",
     "N. Maric": "Nikola Maric",
