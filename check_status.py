@@ -3,6 +3,8 @@ import os
 import re
 import datetime
 import subprocess 
+import time          # <--- NUEVO
+import random        # <--- NUEVO
 from bs4 import BeautifulSoup
 
 # ==============================================================================
@@ -10,7 +12,7 @@ from bs4 import BeautifulSoup
 # ==============================================================================
 TEMPORADA = '2025'
 COMPETICION = '1'
-HORAS_BUFFER = 0
+HORAS_BUFFER = 0    # <--- DÉJALO EN 0 (El control lo hacemos con el cron diario)
 LOG_FILE = "data/log.txt"
 BUFFER_FILE = "data/buffer_control.txt"
 
@@ -24,7 +26,7 @@ HEADERS_API = {
 }
 
 # ==============================================================================
-# ZONA 1: TUS FUNCIONES DE SCRAPING
+# ZONA 1: FUNCIONES DE SCRAPING
 # ==============================================================================
 
 def get_last_jornada_from_log():
@@ -104,47 +106,8 @@ def ejecutar_secuencia_completa(jornada):
         print(f"❌ Error crítico en email_sender: {e}")
         return False
 
-def gestionar_buffer(jornada):
-    ahora = datetime.datetime.now()
-    
-    # REGLA DEL LUNES: Si es Lunes(0), Martes(1) o Miércoles(2) y > 08:00, enviar ya.
-    if ahora.weekday() in [0, 1, 2] and ahora.hour >= 8:
-        print(f"🚨 Es lunes/martes a las {ahora.hour}h. Saltando buffer.")
-        if os.path.exists(BUFFER_FILE):
-            os.remove(BUFFER_FILE)
-        return True
-
-    # Lógica estándar
-    if os.path.exists(BUFFER_FILE):
-        with open(BUFFER_FILE, "r") as f:
-            contenido = f.read().strip().split(",")
-            
-        if len(contenido) != 2 or int(contenido[0]) != jornada:
-            print(f"Reinicio de buffer para J{jornada}.")
-            with open(BUFFER_FILE, "w") as f:
-                f.write(f"{jornada},{ahora.timestamp()}")
-            return False 
-
-        timestamp_inicio = float(contenido[1])
-        inicio_espera = datetime.datetime.fromtimestamp(timestamp_inicio)
-        diferencia = ahora - inicio_espera
-        horas_pasadas = diferencia.total_seconds() / 3600
-
-        print(f"⏳ Buffer activo. Llevamos {horas_pasadas:.2f} / {HORAS_BUFFER} horas.")
-
-        if horas_pasadas >= HORAS_BUFFER:
-            return True
-        else:
-            return False
-            
-    else:
-        print(f"🆕 Fin de jornada detectado. Iniciando espera de {HORAS_BUFFER}h.")
-        with open(BUFFER_FILE, "w") as f:
-            f.write(f"{jornada},{ahora.timestamp()}")
-        return False
-
 # ==============================================================================
-# MAIN (PROTEGIDO)
+# MAIN (CON FACTOR HUMANO)
 # ==============================================================================
 
 def main():
@@ -152,55 +115,55 @@ def main():
     target_jornada = last_sent + 1
     
     print(f"--- INICIO SCRIPT DE CONTROL ---")
-    print(f"Última enviada: {last_sent}. Revisando Jornada: {target_jornada}")
+    print(f"Revisando Jornada: {target_jornada}")
 
     game_ids = get_game_ids(TEMPORADA, COMPETICION, str(target_jornada))
     
-    # --- [PROTECCIÓN] SI NO HAY AL MENOS 8 PARTIDOS, NO ES UNA JORNADA COMPLETA ---
+    # 1. BLINDAJE: Si hay menos de 8 partidos, no hacemos nada.
     if len(game_ids) < 8:
-        print(f"⚠️ ALERTA: Solo he encontrado {len(game_ids)} partidos para la J{target_jornada}.")
-        print("⛔ Probablemente la web de la ACB no muestre todos aún. ABORTANDO ENVÍO.")
-        return
-    # ------------------------------------------------------------------------------
-
-    if not game_ids:
-        print(f"⛔ Jornada {target_jornada} sin partidos o futura.")
+        print(f"⚠️ Solo veo {len(game_ids)} partidos. Faltan datos en la web. No envío nada.")
         return
 
+    # 2. COMPROBACIÓN: ¿Están todos acabados?
     finished_count = 0
     for gid in game_ids:
         if is_game_finished(gid):
             finished_count += 1
     
-    print(f"📊 Estado J{target_jornada}: {finished_count}/{len(game_ids)} terminados.")
+    print(f"📊 Estado: {finished_count}/{len(game_ids)} terminados.")
 
     if finished_count == len(game_ids) and len(game_ids) > 0:
-        print("✅ Todos los partidos han terminado.")
+        print("✅ Jornada terminada.")
         
-        tiempo_cumplido = gestionar_buffer(target_jornada)
+        # --- EL TRUCO DEL FACTOR HUMANO ---
+        # Si ejecutamos a las 08:00 AM, esperamos entre 5 y 45 minutos aleatorios.
+        # El email llegará un día a las 08:07, otro a las 08:35, otro a las 08:42...
         
-        if tiempo_cumplido:
-            print("🚀 Buffer superado. Iniciando actualización y envío...")
-            exito = ejecutar_secuencia_completa(target_jornada)
+        minutos_espera = random.randint(5, 45)
+        print(f"☕ Simulando comportamiento humano... Esperando {minutos_espera} minutos antes de enviar.")
+        print("zzz...")
+        
+        time.sleep(minutos_espera * 60) # El script se pausa aquí
+        
+        print("⏰ ¡Despierta! Enviando ahora.")
+        # ----------------------------------
+
+        exito = ejecutar_secuencia_completa(target_jornada)
+        
+        if exito:
+            fecha_log = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            linea_log = f"{fecha_log} : ✅ Jornada {target_jornada} completada y enviada.\n"
             
-            if exito:
-                fecha_log = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                linea_log = f"{fecha_log} : ✅ Jornada {target_jornada} completada y enviada.\n"
-                
-                with open(LOG_FILE, "a", encoding="utf-8") as f:
-                    f.write(linea_log)
-                
-                if os.path.exists(BUFFER_FILE):
-                    os.remove(BUFFER_FILE)
-                print("🏁 Éxito total.")
-        else:
-            print("zzz Esperando buffer...")
+            with open(LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(linea_log)
             
+            # Limpieza por si acaso
+            if os.path.exists(BUFFER_FILE):
+                os.remove(BUFFER_FILE)
+            print("🏁 Newsletter enviada con éxito.")
+
     else:
-        print("⚽ Aún se está jugando.")
-        # Borrado preventivo de buffer si detectamos partidos en juego
-        if os.path.exists(BUFFER_FILE):
-             os.remove(BUFFER_FILE)
+        print("⚽ Aún se está jugando o faltan datos.")
 
 if __name__ == "__main__":
     main()
