@@ -4,10 +4,8 @@ on:
   push:
     branches: [ main ]
   schedule:
-    # Minuto 0, Hora 7 (UTC) -> 08:00 AM en España
-    - cron: '0 7 * * *' 
+    - cron: '0 7 * * *' # Ejecución diaria a las 08:00 AM (hora España)
   workflow_dispatch:
-
 
 permissions:
   contents: write
@@ -43,16 +41,16 @@ jobs:
         git config --global user.name 'ACB Bot'
         git config --global user.email 'bot@noreply.github.com'
         
-        # 1. PRIMERO AÑADIMOS LOS CAMBIOS LOCALES (Lo que ha generado el bot)
+        # 1. PRIMERO PREPARAMOS LOS CAMBIOS (Stage)
         git add data/
         
-        # 2. HACEMOS EL COMMIT (Guardamos en local)
-        # Si no hay cambios, no pasa nada
+        # 2. GUARDAMOS EN LOCAL (Commit)
+        # El "|| echo" evita que falle si no hay cambios nuevos
         git commit -m "Auto: Update Data & Status [skip ci]" || echo "Nada que commitear"
         
-        # 3. AHORA SÍ, TRAEMOS LO NUEVO DE LA NUBE Y RECOLOCAMOS NUESTRO COMMIT ENCIMA
-        git pull --rebase origin main
+        # 3. AHORA SÍ, SINCRONIZAMOS CON LA NUBE (Pull con Rebase)
+        # Al haber hecho commit antes, ya no dará el error de "unstaged changes"
+        git pull --rebase origin main || git pull --rebase origin master
         
-        # 4. SUBIMOS TODO
+        # 4. SUBIMOS TODO (Push)
         git push
-
