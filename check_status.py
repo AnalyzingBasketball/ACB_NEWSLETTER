@@ -140,7 +140,7 @@ def main():
         print(f"☕ Simulando comportamiento humano... Esperando {minutos_espera} minutos antes de enviar.")
         print("zzz...")
         
-        #time.sleep(minutos_espera * 60) # Pausa aleatoria
+        time.sleep(minutos_espera * 60) # Pausa aleatoria
         
         print("⏰ ¡Despierta! Enviando ahora.")
         # ----------------------------------
