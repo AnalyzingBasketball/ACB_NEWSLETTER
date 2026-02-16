@@ -74,7 +74,7 @@ plantilla_html_base = f"""
         <div style='background-color: #ffffff; padding: 20px; text-align: center; padding-bottom: 40px;'>
             <a href="https://analyzingbasketball.wixsite.com/home/newsletter" 
                style='display: inline-block; background-color: #000000; color: #ffffff; padding: 14px 30px; text-decoration: none; font-weight: bold; font-size: 14px; letter-spacing: 1px; border-radius: 4px;'>
-                LEER ONLINE
+                HOME
             </a>
         </div>
 
