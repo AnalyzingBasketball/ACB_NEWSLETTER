@@ -39,16 +39,14 @@ jobs:
         git config --global user.name 'ACB Bot'
         git config --global user.email 'bot@noreply.github.com'
         
-        # 1. PRIMERO PREPARAMOS LOS CAMBIOS (Stage)
-        git add data/
+        # 1. AÑADIMOS TODOS LOS ARCHIVOS MODIFICADOS (El punto es clave)
+        git add .
         
         # 2. GUARDAMOS EN LOCAL (Commit)
-        # El "|| echo" evita que falle si no hay cambios nuevos
         git commit -m "Auto: Update Data & Status [skip ci]" || echo "Nada que commitear"
         
-        # 3. AHORA SÍ, SINCRONIZAMOS CON LA NUBE (Pull con Rebase)
-        # Al haber hecho commit antes, ya no dará el error de "unstaged changes"
+        # 3. SINCRONIZAMOS CON LA NUBE
         git pull --rebase origin main || git pull --rebase origin master
         
-        # 4. SUBIMOS TODO (Push)
+        # 4. SUBIMOS TODO
         git push
