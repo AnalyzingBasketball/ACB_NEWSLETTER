@@ -17,4 +17,3 @@
 2026-01-26 15:16 : ✅ Jornada 17 completada y enviada.
 2026-02-02 08:16 : ✅ Jornada 18 completada y enviada.
 2026-02-15 12:00 : ✅ Jornada 19 completada y enviada.
-2026-02-16 10:00 : ✅ Jornada 20 completada y enviada.
