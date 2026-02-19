@@ -8,7 +8,7 @@ import pandas as pd
 
 # --- 1. CONFIGURACIÓN ---
 URL_LOGO = "https://raw.githubusercontent.com/AnalyzingBasketball/ACB_2526_NEWSLETTER/refs/heads/main/logo.png"
-URL_BAJA = "https://analyzingbasketball.wixsite.com/home/baja"
+URL_BAJA = "https://www.analyzingbasketball.com/home/baja"
 
 gmail_user = os.environ.get("GMAIL_USER")
 gmail_password = os.environ.get("GMAIL_PASSWORD")
