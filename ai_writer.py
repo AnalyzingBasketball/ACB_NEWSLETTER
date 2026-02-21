@@ -476,11 +476,12 @@ if len(jornadas_unicas) >= 1:
                        f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, {b(row['AST'], 1)} AST.\n")
 
 # ==============================================================================
-# 6. GENERACIÓN IA (TEXTO PURO, MANUAL DE ESTILO EDITORIAL)
+# 6. GENERACIÓN IA (TEXTO PURO, MANUAL DE ESTILO EDITORIAL ESTRICTO)
 # ==============================================================================
 
 prompt = f"""
-Actúa como Redactor Jefe de una newsletter premium y analítica sobre la Liga Endesa (ACB). Tu objetivo es convertir datos estadísticos avanzados en una crónica narrativa de alto nivel.
+Actúa como un analista de baloncesto profesional y periodista deportivo de élite.
+Vas a escribir la newsletter 'Analyzing Basketball' sobre la Liga Endesa (ACB). Tu objetivo es convertir datos estadísticos avanzados en una crónica narrativa de alto nivel.
 
 DATOS DE LA JORNADA (Inamovibles):
 MVP: {txt_mvp}
@@ -493,29 +494,29 @@ CONTEXTO:
 TENDENCIAS:
 {txt_trends}
 
-MANUAL DE ESTILO Y TONO (CUMPLIMIENTO ESTRICTO):
-1. PERSPECTIVA Y TRATO: Dirígete al lector de manera individual, exclusivamente en segunda persona del singular ("tú"). Queda terminantemente prohibido el uso de fórmulas de cortesía ("usted") o plurales genéricos ("vosotros", "lectores", "suscriptores"). La redacción debe proyectar una comunicación confidencial y directa (1 a 1).
-2. REGISTRO LINGÜÍSTICO: Emplea un registro coloquial culto. El tono debe ser el de un analista experto que comparte información privilegiada con un socio del mismo nivel técnico. 
-3. RIGOR Y ELEGANCIA: Mantén la máxima profesionalidad periodística. Expresa pasión y dinamismo a través del análisis del juego, descartando por completo cualquier tipo de jerga informal, expresiones adolescentes o vocabulario no profesional.
-4. TÉCNICA NARRATIVA: Integra la estadística en una narración fluida y ágil. Evita la enumeración robótica de datos. Utiliza recursos retóricos elegantes (preguntas directas al lector, oraciones cortas para dar ritmo) para maximizar la retención.
-5. FORMATO DE ENTREGA: Genera única y exclusivamente el texto final estructurado. Omite saludos automatizados, confirmaciones de instrucciones o cualquier texto fuera de la estructura solicitada.
+REGLAS DE ESTILO (¡MUY ESTRICTAS!):
+1. TONO: Profesional, analítico, objetivo y periodístico. Eres un experto en datos estadísticos avanzados.
+2. CERO EMOJIS: Está TOTALMENTE PROHIBIDO usar emojis en cualquier parte del texto (ni en el asunto, ni en los títulos, ni en el cuerpo).
+3. CERO PREGUNTAS RETÓRICAS: No uses frases como "¿Has reparado en...?", "¿Viste cómo...?", "¿Qué me dices de...?". Ve directo al análisis de los datos.
+4. CERO LENGUAJE COLOQUIAL O DE COLEGUEO: No hables al lector en segunda persona ("sabes", "te demostró", "piensa", "tu"). Usa siempre la tercera persona o formas impersonales ("se observa", "destaca", "es notable").
+5. CERO DRAMATISMO: Evita clichés exagerados. Usa un lenguaje técnico, táctico y elegante.
 
 ESTRUCTURA EXACTA DE SALIDA:
 
-ASUNTO: [Una sola frase corta, máx 50 caracteres, impactante y magnética. Empieza con "ASUNTO:"]
+ASUNTO: [Escribe aquí un asunto atractivo, muy profesional, centrado en estadísticas y SIN EMOJIS]
 
-## 🏀 Informe ACB: {ultima_jornada_label}
+## Informe ACB: {ultima_jornada_label}
 
-### 👑 El MVP
-[Crónica narrativa del MVP o MVPs, aplicando el manual de estilo. Aporta contexto cualitativo a sus métricas]
+### El MVP
+[Crónica narrativa del MVP o MVPs, basándote estrictamente en sus métricas y aportando contexto cualitativo de forma sobria y analítica]
 
-### 🚀 Radar de Eficiencia
-[Análisis de los destacados y el contexto. Mantén el ritmo rápido y la conexión directa con el lector]
+### Radar de Eficiencia
+[Análisis de los destacados y el contexto (TS%, USG%). Mantén un tono analítico y periodístico]
 
-### 🧠 Pizarra Táctica
-[Análisis de los equipos: Ataque, Fluidez, Control. Traduce la eficiencia ofensiva y el ratio de asistencias/pérdidas a conceptos de juego real]
+### Pizarra Táctica
+[Análisis de los equipos: Ataque, Fluidez, Control. Traduce la eficiencia ofensiva y el ratio de asistencias/pérdidas a conceptos de juego real de forma técnica]
 
-### 🔥 Quién está On Fire (Últimas Jornadas)
+### Tendencias (Últimas Jornadas)
 {txt_trends}
 """
 
