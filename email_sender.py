@@ -8,6 +8,8 @@ import pandas as pd
 
 # --- 1. CONFIGURACIÓN ---
 URL_LOGO = "https://raw.githubusercontent.com/AnalyzingBasketball/ACB_2526_NEWSLETTER/refs/heads/main/logo.png"
+# AQUÍ AÑADIMOS LA URL DE TU LOGO DE LA ACB
+URL_LOGO_ACB = "https://raw.githubusercontent.com/AnalyzingBasketball/ACB_2526_NEWSLETTER/refs/heads/main/logo_acb.png"
 URL_BAJA = "https://www.analyzingbasketball.com/home/baja"
 
 gmail_user = os.environ.get("GMAIL_USER")
@@ -68,6 +70,11 @@ plantilla_html_base = f"""
         </div>
 
         <div style='padding: 40px 30px; color: #333333; line-height: 1.6; font-size: 16px;'>
+            
+            <div style='text-align: center; margin-bottom: 25px;'>
+                <img src="{URL_LOGO_ACB}" alt="Liga Endesa ACB" style="max-width: 90px; height: auto; display: inline-block;">
+            </div>
+
             {html_body}
         </div>
 
