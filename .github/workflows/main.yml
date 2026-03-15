@@ -8,10 +8,9 @@ on:
 permissions:
   contents: write
 
-# 👇 BLINDAJE TOTAL CONTRA AVISOS DE NODE.JS 👇
+# 👇 SOLO DEJAMOS ESTA VARIABLE 👇
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   run-process:
@@ -37,7 +36,7 @@ jobs:
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
         URL_SUSCRIPTORES: ${{ secrets.URL_SUSCRIPTORES }}
         MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
-      # 👇 MODO PRUEBA: Forzamos la escritura y el envío para no esperar a la noche 👇
+      # 👇 MODO PRUEBA 👇
       run: |
         python ai_writer.py
         python email_sender.py
