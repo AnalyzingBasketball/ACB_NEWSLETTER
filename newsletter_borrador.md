@@ -1,18 +1,18 @@
-ASUNTO: Jornada 21 ACB: El Liderazgo de Forrest y la Consolidación de la Eficiencia Colectiva
+ASUNTO: Jornada 22 ACB: Impacto de Bozic y Radiografía Táctica de la Eficiencia Colectiva
 
-## Informe Liga Endesa: Jornada 21
+## Informe Liga Endesa: Jornada 22
 
 ### MVP y Puntos Clave de la Jornada
-Trent Forrest del Baskonia fue el MVP de la Jornada **21** con **30** de valoración, mostrando una eficiencia ofensiva sobresaliente. Sus **18** puntos con un True Shooting del **73.3**% y **5** rebotes fueron fundamentales para su equipo en la exigente liga regular, un factor decisivo para consolidar posiciones en la tabla. Este tipo de actuaciones individuales son vitales para cualquier aspirante en una competición tan reñida.
+Luka Bozic, del Covirán Granada, se erigió como el jugador más valorado de la Jornada **22** con **33** créditos de valoración. Su actuación estelar, sumando **20** puntos con un **67.4**% de TS% y capturando **13** rebotes, fue una demostración de dominio en ambos lados del parqué. Este rendimiento individual, crucial para un equipo en la lucha por la permanencia, refleja la exigencia de la Liga Endesa y la necesidad de picos de forma en momentos clave de la temporada.
 
-Un ejemplo de su impacto táctico se observó en un pick & roll central, donde Forrest, tras un bote explosivo, superó a su defensor directo y finalizó con un mate potente, aprovechando el colapso defensivo para generar una ventaja crítica. Su habilidad para atacar el close-out en el lado débil tras un pase extra, le permitió cerrar un parcial con un tiro tras bote de alta eficacia, demostrando un elevado IQ ofensivo.
+En un partido con el marcador ajustado, Bozic no solo aportó en la estadística pura, sino que supo generar ventajas en la pintura. Tras un colapso defensivo provocado por su penetración, fue capaz de asegurar un rebote ofensivo en el lado débil y finalizar con un mate potente, mostrando su inteligencia en el juego sin balón y su capacidad para imponerse físicamente en situaciones de tráfico.
 
 ### Radar de Eficiencia y Pizarra Táctica
-El Barça de Xavi Pascual continúa marcando la pauta ofensiva de la liga con **142.1** puntos por **100** posesiones, evidenciando un ataque de élite capaz de generar ventajas constantes. La fluidez en la distribución de balón del Joventut de Dani Miret, con **36.1** asistencias por **100** posesiones, subraya la relevancia del juego colectivo y el spacing. Complementariamente, el UCAM Murcia de Sito Alonso exhibe un control superior con solo **6.1** pérdidas por **100** posesiones, minimizando errores y maximizando la posesión efectiva, elementos cruciales para definir el ritmo y el control de los partidos en la ACB.
+La Jornada **22** subrayó la maestría táctica en diversos frentes. Unicaja, bajo la dirección de Ibon Navarro, sigue exhibiendo el mejor ataque de la competición con **137.1** puntos por cada 100 posesiones, fruto de una gran ejecución y el correcto spacing en su ofensiva. Por su parte, el Bilbao Basket de Jaume Ponsarnau destacó por su fluidez, promediando **33.2** asistencias por cada 100 posesiones, lo que denota una gran circulación de balón y la generación constante de ventajas para el colectivo. La Laguna Tenerife, con Txus Vidorreta al mando, mantiene un control del balón envidiable, con solo **8.8** pérdidas por 100 posesiones, minimizando errores y maximizando la eficiencia.
 
 ### Jugadores en Racha (Últimas 3 Jornadas)
-- Mario Hezonja (RMB): **35.0** VAL, **26.0** PTS, **2.0** AST.
-- Trent Forrest (BKN): **27.0** VAL, **15.0** PTS, **4.5** AST.
-- Eugene Omoruyi (BKN): **26.0** VAL, **16.0** PTS, **6.5** AST.
-- Jean Montero (VBC): **23.5** VAL, **19.0** PTS, **4.5** AST.
-- Devontae Cacok (UCM): **23.0** VAL, **18.0** PTS, **1.3** AST.
+- Trent Forrest (BKN): **26.7** VAL, **16.3** PTS, **4.7** AST.
+- Giorgi Shermadini (TEN): **24.5** VAL, **21.0** PTS, **0.5** AST.
+- Jean Montero (VBC): **23.5** VAL, **15.5** PTS, **6.5** AST.
+- Kameron Taylor (VBC): **21.0** VAL, **22.0** PTS, **1.0** AST.
+- Mario Hezonja (RMB): **20.5** VAL, **16.0** PTS, **2.5** AST.
