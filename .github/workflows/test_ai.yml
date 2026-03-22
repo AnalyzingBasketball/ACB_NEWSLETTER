@@ -12,10 +12,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - name: Checkout repo (rama mejoras)
+    - name: Checkout repo
       uses: actions/checkout@v4
-      with:
-        ref: mejoras
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -24,7 +22,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pandas numpy google-generativeai
+        pip install pandas google-generativeai numpy
 
     - name: Ejecutar AI Writer directamente
       env:

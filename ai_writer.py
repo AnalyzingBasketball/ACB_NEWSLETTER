@@ -11,7 +11,6 @@ import numpy as np
 MODEL_NAME = "gemini-2.5-flash"
 FILE_PATH = "data/BoxScore_ACB_2025_Cumulative.csv"
 
-# Mapa de Equipos (Los 18 de la Liga Endesa)
 TEAM_MAP = {
     'UNI': 'Unicaja', 'SBB': 'Bilbao Basket', 'BUR': 'San Pablo Burgos', 'GIR': 'Bàsquet Girona',
     'TEN': 'La Laguna Tenerife', 'MAN': 'BAXI Manresa', 'LLE': 'Hiopos Lleida', 'BRE': 'Río Breogán',
@@ -20,7 +19,6 @@ TEAM_MAP = {
     'VBC': 'Valencia Basket', 'BAR': 'Barça'
 }
 
-# Mapa de Entrenadores (Temporada 2025/2026 - ACTUALIZADO OFICIAL)
 COACH_MAP = {
     'BAR': 'Xavi Pascual', 'RMB': 'Sergio Scariolo', 'UNI': 'Ibon Navarro',
     'BKN': 'Paolo Galbiati', 'VBC': 'Pedro Martínez', 'UCM': 'Sito Alonso',
@@ -118,42 +116,72 @@ for col in cols_num:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-# Buscamos la última jornada registrada
 jornadas_unicas = sorted(df['Week'].unique(), key=extraer_numero_jornada)
 ultima_jornada_label = jornadas_unicas[-1]
 df_week = df[df['Week'] == ultima_jornada_label]
 
-print(f"🤖 Analizando {ultima_jornada_label}...")
+print(f"Analizando {ultima_jornada_label}...")
 
 # ==============================================================================
-# 5. PREPARACIÓN DE DATOS (Top Performers, Equipos, Tendencias)
+# 5. PREPARACIÓN DE DATOS
 # ==============================================================================
 
-# A. MEJORES JUGADORES (SOPORTA EMPATES)
-ganadores = df_week[df_week['Win'] == 1]
-pool = ganadores if not ganadores.empty else df_week
-
-max_val = pool['VAL'].max()
-mejores = pool[pool['VAL'] == max_val]
+# CO-MVP: máximo VAL en TODA la jornada (no solo ganadores).
+max_val_jornada = df_week['VAL'].max()
+mejores = df_week[df_week['VAL'] == max_val_jornada]
+num_mvps = len(mejores)
 
 txt_mejores = ""
 mejores_ids = []
-
 for _, row in mejores.iterrows():
     m_name = clean_name(row['Name'])
-    txt_mejores += (f"- {m_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL, "
-                f"{b(row['PTS'])} PTS (TS%: {b(row['TS%'], 1, True)}), {b(row['Reb_T'])} REB.\n")
+    resultado = "victoria" if row['Win'] == 1 else "derrota"
+    txt_mejores += (f"- {m_name} ({get_team_name(row['Team'])}, {resultado}): "
+                    f"{b(row['VAL'])} VAL, {b(row['PTS'])} PTS "
+                    f"(TS%: {b(row['TS%'], 1, True)}), {b(row['Reb_T'])} REB, "
+                    f"{b(row['AST'])} AST, USG%: {b(row['USG%'], 1, True)}.\n")
     mejores_ids.append(row['PlayerID'])
 
-# B. DESTACADOS SECUNDARIOS
+# --- OTROS DESTACADOS (top 5 excluyendo MVPs, con más detalle) ---
 resto = df_week[~df_week['PlayerID'].isin(mejores_ids)]
-top_rest = resto.sort_values('VAL', ascending=False).head(3)
+top_rest = resto.sort_values('VAL', ascending=False).head(5)
 txt_rest = ""
 for _, row in top_rest.iterrows():
     r_name = clean_name(row['Name'])
-    txt_rest += f"- {r_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL.\n"
+    resultado = "W" if row['Win'] == 1 else "L"
+    txt_rest += (f"- {r_name} ({get_team_name(row['Team'])}, {resultado}): "
+                 f"{b(row['VAL'])} VAL, {b(row['PTS'])} PTS, "
+                 f"{b(row['Reb_T'])} REB, {b(row['AST'])} AST, "
+                 f"TS%: {b(row['TS%'], 1, True)}.\n")
 
-# C. EQUIPOS DE LA JORNADA
+# --- OUTSIDER: jugador cuya VAL de esta jornada más supera su media de temporada ---
+txt_outsider = ""
+try:
+    df_prev = df[df['Week'] != ultima_jornada_label]
+    if len(df_prev) > 0:
+        season_avg = df_prev.groupby(['Name', 'Team'])['VAL'].mean().reset_index()
+        season_avg.columns = ['Name', 'Team', 'VAL_avg']
+        game_counts = df_prev.groupby(['Name', 'Team']).size().reset_index(name='games')
+        season_avg = season_avg.merge(game_counts, on=['Name', 'Team'])
+        season_avg = season_avg[season_avg['games'] >= 5]
+        week_data = df_week[['Name', 'Team', 'VAL', 'PTS', 'Reb_T', 'AST', 'TS%', 'Win']].copy()
+        merged = week_data.merge(season_avg, on=['Name', 'Team'], how='inner')
+        merged['VAL_delta'] = merged['VAL'] - merged['VAL_avg']
+        merged = merged[~merged['Name'].isin([row['Name'] for _, row in mejores.iterrows()])]
+        if len(merged) > 0:
+            outsider = merged.sort_values('VAL_delta', ascending=False).iloc[0]
+            o_name = clean_name(outsider['Name'])
+            resultado = "victoria" if outsider['Win'] == 1 else "derrota"
+            txt_outsider = (f"- {o_name} ({get_team_name(outsider['Team'])}, {resultado}): "
+                           f"{b(outsider['VAL'])} VAL esta jornada vs {b(outsider['VAL_avg'], 1)} de media en temporada "
+                           f"(+{outsider['VAL_delta']:.1f}). {b(outsider['PTS'])} PTS, "
+                           f"{b(outsider['Reb_T'])} REB, {b(outsider['AST'])} AST, "
+                           f"TS%: {b(outsider['TS%'], 1, True)}.")
+except Exception as e:
+    print(f"Aviso: no se pudo calcular outsider: {e}")
+    txt_outsider = ""
+
+# --- EFICIENCIA EQUIPOS ---
 team_agg = df_week.groupby('Team').agg({
     'PTS': 'sum', 'Game_Poss': 'mean', 'Reb_T': 'sum', 'AST': 'sum', 'TO': 'sum'
 }).reset_index()
@@ -162,16 +190,17 @@ team_agg['AST_Ratio'] = (team_agg['AST'] / team_agg['Game_Poss']) * 100
 team_agg['TO_Ratio'] = (team_agg['TO'] / team_agg['Game_Poss']) * 100
 
 best_offense = team_agg.sort_values('ORTG', ascending=False).iloc[0]
+worst_offense = team_agg.sort_values('ORTG', ascending=True).iloc[0]
 best_passing = team_agg.sort_values('AST_Ratio', ascending=False).iloc[0]
 most_careful = team_agg.sort_values('TO_Ratio', ascending=True).iloc[0]
 
 txt_teams = f"""
-- Mejor Ataque: {get_team_name(best_offense['Team'])} (Entrenador: {COACH_MAP.get(best_offense['Team'], 'su técnico')}) con {b(best_offense['ORTG'], 1)} pts/100.
-- Fluidez: {get_team_name(best_passing['Team'])} (Entrenador: {COACH_MAP.get(best_passing['Team'], 'su técnico')}) con {b(best_passing['AST_Ratio'], 1)} ast/100.
-- Control: {get_team_name(most_careful['Team'])} (Entrenador: {COACH_MAP.get(most_careful['Team'], 'su técnico')}) con {b(most_careful['TO_Ratio'], 1)} perdidas/100.
+- Mejor Ataque: {get_team_name(best_offense['Team'])} ({COACH_MAP.get(best_offense['Team'], 'su técnico')}) con {b(best_offense['ORTG'], 1)} pts/100 pos.
+- Peor Ataque: {get_team_name(worst_offense['Team'])} ({COACH_MAP.get(worst_offense['Team'], 'su técnico')}) con {b(worst_offense['ORTG'], 1)} pts/100 pos.
+- Mejor Fluidez: {get_team_name(best_passing['Team'])} ({COACH_MAP.get(best_passing['Team'], 'su técnico')}) con {b(best_passing['AST_Ratio'], 1)} ast/100 pos.
+- Mejor Control: {get_team_name(most_careful['Team'])} ({COACH_MAP.get(most_careful['Team'], 'su técnico')}) con {b(most_careful['TO_Ratio'], 1)} pérdidas/100 pos.
 """
 
-# D. TENDENCIAS (Últimas 3 Jornadas)
 txt_trends = ""
 if len(jornadas_unicas) >= 1:
     last_3 = jornadas_unicas[-3:]
@@ -181,73 +210,186 @@ if len(jornadas_unicas) >= 1:
     for _, row in hot.iterrows():
         t_name = clean_name(row['Name'])
         txt_trends += (f"- {t_name} ({get_team_name(row['Team'], False)}): "
-                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, {b(row['AST'], 1)} AST.\n")
+                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, "
+                       f"{b(row['AST'], 1)} AST, TS%: {b(row['TS%'], 1, True)}.\n")
 
 # ==============================================================================
-# 6. INSTRUCCIONES ESPECÍFICAS PARA LA JORNADA (SIN BUSCADOR REAL)
-# ==============================================================================
-instrucciones_especificas = """
-INSTRUCCIONES ESPECÍFICAS PARA LA JORNADA LIGUERA:
-1. ANÁLISIS DEL MVP: Basa tu análisis del MVP ESTRICTAMENTE en el jugador con mayor valoración (VAL) de los datos proporcionados arriba. Nómbralo en el primer párrafo y analiza su hoja estadística.
-2. CONTEXTO LIGUERO: Menciona la importancia de esta actuación para su equipo en el contexto de la larga liga regular (ganar fuera, mantenerse arriba, etc.).
-3. JUGADAS DETERMINANTES: Basándote en el perfil estadístico de los mejores jugadores, recrea de forma realista y coherente 1 o 2 momentos tácticos del partido para dar contexto a los fríos datos.
-4. Analiza el RITMO DEL PARTIDO basándote en los datos estadísticos de equipos proporcionados (ORTG, posesiones, ratios).
-"""
-
-# ==============================================================================
-# 7. GENERACIÓN IA SIN HERRAMIENTAS EXTERNAS Y REGLAS ESTRICTAS (MODO CONCISO)
+# 6. CONSTRUCCIÓN DEL PROMPT
 # ==============================================================================
 
-prompt = f"""
-    Actúa como un analista de baloncesto profesional y periodista deportivo de élite.
-    Estás redactando la newsletter 'Analyzing Basketball' sobre la Liga Endesa (ACB).
-    
-    JORNADA ACTUAL: {ultima_jornada_label}
-    
-    DATOS DE LOS JUGADORES (Top Performers Estadísticos):
-    {txt_mejores}
-    {txt_rest}
-    
-    DATOS DE LOS EQUIPOS (Eficiencia y Entrenadores):
-    {txt_teams}
-    
-    ESTADO DE FORMA (Promedios últimas 3 jornadas):
-    {txt_trends}
-    
-    {instrucciones_especificas}
-    
-    REGLAS DE ESTILO (¡MUY ESTRICTAS Y DE OBLIGADO CUMPLIMIENTO!):
-    1. TONO Y AUDIENCIA: Profesional, analítico y estrictamente periodístico. Escribes para expertos en baloncesto en ESPAÑA. Transmite la dificultad de la liga regular ACB.
-    2. IDIOMA (ESPAÑOL DE ESPAÑA PURO): Tienes TERMINANTEMENTE PROHIBIDO usar vocabulario latinoamericano. Usa "mate" (nunca volcada), "parqué/cancha" (nunca duela), y "tiros libres" (nunca lanzamiento de personal).
-    3. CERO EMOJIS (CRÍTICO): Está TOTALMENTE PROHIBIDO usar emojis en cualquier parte del texto. NI UNO SOLO en el asunto, NI en los títulos, NI en el cuerpo.
-    4. TRATO AL LECTOR (IMPERSONAL): NO te dirijas al lector bajo ningún concepto. Tienes PROHIBIDO usar "tú", PROHIBIDO usar "vosotros" y PROHIBIDO tratar de "usted". Escribe exclusivamente en tercera persona o usando formas impersonales ("se observa", "el equipo logró", "destaca"). Cero preguntas retóricas.
-    5. ENTRENADORES Y ALUCINACIONES: Usa estrictamente los nombres de los entrenadores proporcionados en los datos. No inventes rotaciones.
-    6. RITMO Y VOZ ACTIVA: Cero dramatismos literarios ("a vida o muerte", "clavo en el ataúd"). Escribe en voz activa. Que los datos sostengan tu análisis.
-    7. VOCABULARIO DE PARQUÉ: Usa terminología técnica real de baloncesto con naturalidad (spacing, pick & roll central, mismatch, IQ, colapso defensivo, tiro tras bote, generación de ventajas, lado débil).
-    8. CONCISIÓN EXTREMA (CRÍTICO): La newsletter debe ser escueta, hiper-directa y fácil de escanear visualmente. Elimina toda la "paja" y las introducciones largas. Ve directo al grano usando frases cortas.
-    9. FORMATO DE DATOS (CRÍTICO): Es OBLIGATORIO que todos los números estadísticos (puntos, rebotes, valoración, porcentajes, etc.) que escribas en el texto vayan en negrita usando el formato Markdown (**número**).
+if num_mvps > 1:
+    mvp_instruccion = (f"JORNADA CON CO-MVPs: {num_mvps} jugadores empatados en {int(max_val_jornada)} VAL. "
+                       f"Trátalos con IGUAL protagonismo. No elijas uno principal. "
+                       f"Pueden ser de equipos distintos o incluso de equipos que perdieron.")
+else:
+    mvp_instruccion = "MVP único: un solo jugador lidera la valoración."
 
-    ESTRUCTURA DE SALIDA (ESTRICTA):
-    ASUNTO: [Escribe aquí un asunto atractivo, muy profesional, que denote la jornada, basado en los mejores datos y ESTRICTAMENTE SIN NINGÚN EMOJI]
+bloque_outsider_datos = ""
+bloque_outsider_formato = ""
+if txt_outsider:
+    bloque_outsider_datos = f"\n--- OUTSIDER DE LA JORNADA (mayor salto vs su media) ---\n{txt_outsider}\n"
+    bloque_outsider_formato = """\n### Nombre Propio\n[1 párrafo sobre el outsider. Usa el contraste entre su media de temporada y lo que hizo esta jornada.\nNo hace falta que sea largo. Una observación con criterio vale más que tres frases de relleno.]"""
 
-    ## Informe Liga Endesa: {ultima_jornada_label}
+prompt = f"""Eres el autor de la newsletter 'Analyzing Basketball' sobre la Liga Endesa (ACB).
 
-    ### MVP y Puntos Clave de la Jornada
-    [Crónica hiper-concisa. MÁXIMO 2 párrafos cortos (3-4 líneas cada uno). Combina el análisis del rendimiento estadístico con el contexto de la competición liguera. Aporta los datos sin rodeos.]
+Tu voz: formal pero sin rigidez, analítica pero no académica. Escribes como alguien que
+sabe de lo que habla y no necesita demostrarlo. Frases cortas que rematan una idea.
+Opinión cuando los datos la justifican, dicha con naturalidad, sin dramatismo ni adornos.
+Cuando un dato es llamativo, lo dices claro: "Es una barbaridad", "No es el baloncesto
+más vistoso, pero funciona". Sin rodeos, sin relleno, sin intentar sonar inteligente.
 
-    ### Radar de Eficiencia y Pizarra Táctica
-    [Análisis directo y escueto. MÁXIMO 1 párrafo corto o una breve lista de viñetas (bullet points). Usa los datos de Puntos por 100 posesiones, Asistencias o Pérdidas y menciona a sus entrenadores reales proporcionados. Ve directamente a la conclusión táctica.]
+JORNADA: {ultima_jornada_label}
+{mvp_instruccion}
 
-    ### Jugadores en Racha (Últimas 3 Jornadas)
-    [Enumera a los 5 jugadores con mayor valoración acumulada reciente en este formato exacto, usando guiones:]
-    {txt_trends}
-"""
+--- DATOS MVP(S) ---
+{txt_mejores}
+--- OTROS DESTACADOS (top 5) ---
+{txt_rest}
+--- EFICIENCIA EQUIPOS ---
+{txt_teams}{bloque_outsider_datos}
+--- FORMA RECIENTE (3 jornadas) ---
+{txt_trends}
 
+=== EJEMPLO 1 — Newsletter Jornada 21 (escrita por el propio autor) ===
+
+ASUNTO: Forrest, MVP de la Jornada 21
+
+Liga Endesa, Jornada 21
+
+Trent Forrest se llevó el MVP con **30** de valoración. **18** puntos, **73.3**% de TS%,
+**5** rebotes. No es un jugador que necesite dominar el balón para hacer daño, y eso
+es lo que lo hace peligroso.
+
+Donde más se notó fue en el pick & roll. Forrest obliga a la defensa a elegir mal, y
+cuando eso pasa, aparecen huecos. Penetraciones, tiros abiertos, lo que venga. También
+se metió en el rebote ofensivo, que es algo que no siempre hace pero que en esta jornada
+dio segundas oportunidades en momentos tensos.
+
+El Barça sigue siendo una máquina de anotar: **142.1** puntos por **100** posesiones.
+Transición, estático, da igual. Xavi Pascual tiene un equipo que te puede hacer daño
+de cualquier forma.
+
+El Joventut movió el balón mejor que nadie con **36.1** asistencias por **100** posesiones.
+No tienen un anotador dominante, pero tampoco lo necesitan. Juegan juntos.
+
+Y luego está el UCAM Murcia, que perdió solo **6.1** balones por **100** posesiones.
+Sito Alonso lleva años haciendo lo mismo: ritmo lento, cero regalos, cada posesión
+exprimida. No es el baloncesto más vistoso, pero funciona.
+
+=== EJEMPLO 2 — Newsletter Jornada 22, co-MVPs (escrita por el propio autor) ===
+
+ASUNTO: Happ y Bozic se reparten el MVP de la Jornada 22
+
+Liga Endesa, Jornada 22
+
+Ethan Happ y Luka Bozic terminaron empatados en **33** de valoración. Happ (San Pablo Burgos)
+hizo un doble-doble silencioso: **16** puntos, **10** rebotes y un **73.5**% de TS%. Lo llamativo
+es que su USG% fue del **21.8**%. No necesitó dominar el balón para dominar el partido.
+
+Bozic (Covirán Granada) tiró más del carro en anotación con **20** puntos, pero donde
+realmente hizo daño fue en el rebote: **13**. También un USG% bajo, del **21.7**%. Dos jugadores
+que producen mucho sin acaparar. Raro verlo dos veces en la misma jornada.
+
+El Unicaja sigue siendo otro planeta en ataque. **137.1** puntos por **100** posesiones.
+Ibon Navarro tiene montado un sistema que hace que defender a su equipo sea un infierno.
+
+Bilbao Basket repartió **33.2** asistencias por **100** posesiones, la mejor marca de la jornada.
+Y Tenerife perdió solo **8.8** balones por **100** posesiones. Txus Vidorreta y lo de siempre:
+nada de regalos.
+
+=== EJEMPLO 3 — Fragmentos de Copa del Rey (tono del autor en formato más narrativo) ===
+
+"Da igual cómo intentes defenderlos. Si corres con ellos, te matan en transición.
+Si te plantas y organizas la defensa, te desarman con movimiento y pases."
+
+"Sito Alonso lleva años haciendo lo mismo: ritmo lento, cero regalos, cada posesión exprimida."
+
+"Es el tipo de jugador que no valoras del todo hasta que miras la hoja de estadísticas
+al final y piensas: ah, claro, Lyles otra vez."
+
+"No es el baloncesto más vistoso. No vas a ver highlights del Barça en esta Copa.
+Pero vas a verlos en semifinales, que al final es lo que importa."
+
+=== FIN EJEMPLOS ===
+
+PATRONES DEL AUTOR QUE DEBES REPLICAR:
+- Frase corta que remata: "Raro verlo dos veces en la misma jornada." Sin desarrollar más.
+- Dato primero, interpretación después en UNA frase. Nunca al revés.
+- Opinión integrada con naturalidad: "otro planeta en ataque", "lo de siempre: nada de regalos".
+- Contraste inesperado: "No necesitó dominar el balón para dominar el partido."
+- Sin conectores vacíos: NUNCA "por otro lado", "cabe destacar", "en este sentido", "es importante señalar".
+- Cuando algo es llamativo, lo dice sin rodeos. Cuando no lo es, no lo fuerza.
+- Menciona a otros jugadores destacados cuando aporten algo a la narrativa, no como lista.
+
+=== PARES INCORRECTO / CORRECTO — aprende la diferencia ===
+
+INCORRECTO: "Un USG% de 21.8% indica que su producción fue significativa sin una carga excesiva en la distribución de tiros."
+CORRECTO: "USG% del 21.8%. No necesitó dominar el balón para dominar el partido."
+
+INCORRECTO: "Este dato sugiere que el sistema de Ibon Navarro continúa optimizando la selección de tiro y la ejecución ofensiva."
+CORRECTO: "Ibon Navarro tiene montado un sistema que hace que defender a su equipo sea un infierno."
+
+INCORRECTO: "Un alto ratio de asistencia habitualmente apunta a una buena circulación y movimiento sin balón, lo que permite generar ventajas."
+CORRECTO: "No tienen un anotador dominante, pero tampoco lo necesitan. Juegan juntos."
+
+INCORRECTO: "Minimizar los errores no forzados es clave para un baloncesto eficiente, y esta cifra destaca la disciplina."
+CORRECTO: "Sito Alonso lleva años haciendo lo mismo: ritmo lento, cero regalos, cada posesión exprimida."
+
+INCORRECTO: "Su impacto en el rebote fue determinante, capturando 13 rebotes que consolidaron su dominio bajo los aros."
+CORRECTO: "Donde realmente hizo daño fue en el rebote: 13."
+
+=== FIN PARES ===
+
+REGLAS ABSOLUTAS:
+1. LONGITUD: entre 400 y 550 palabras en el cuerpo (bullets de "En Racha" no cuentan).
+2. ARRANQUE: primera frase = dato concreto. Sin "Una nueva jornada..." ni similares.
+3. SIN CIERRE: sin despedidas. El texto termina con el último dato o idea.
+4. SIN EMOJIS: en ninguna parte.
+5. IMPERSONAL: sin "tú", "vosotros", "usted". Tercera persona o formas impersonales.
+6. ESPAÑOL DE ESPAÑA: "mate" no volcada, "cancha/parqué" no duela, "tiros libres" no lanzamiento personal.
+7. INFERENCIA TÁCTICA: sin vídeo ni play-by-play. Enmarca como inferencia:
+   "el USG% sugiere...", "la ratio AST/TO apunta a...", "con ese ORTG el sistema de X parece...".
+   PROHIBIDO narrar acciones en tiempo real.
+8. ENTRENADORES: solo los de los datos. No inventes.
+9. NEGRITA en todos los números estadísticos.
+10. VOCABULARIO PROHIBIDO: "créditos de valoración", "maestría", "denota", "subraya", "exhibe",
+    "estelar", "galvaniza", "sin lugar a dudas", "no es casualidad", "en definitiva",
+    "es importante señalar", "cabe destacar", "por otro lado", "en este sentido",
+    "notable eficiencia", "producción significativa", "excepcional", "sobresaliente",
+    "impresionante", "espectacular", "magistral", "portentoso".
+11. NO EXPLIQUES LO OBVIO: el lector sabe qué es el USG%, el TS%, el ORTG y las demás métricas.
+    NUNCA definas ni parafrasees lo que significa una estadística. Usa el dato directamente
+    con tu interpretación. Si escribes algo parecido a "un alto ratio de asistencia apunta a
+    buena circulación de balón", BÓRRALO. El lector ya lo sabe. Di algo con criterio propio
+    o no digas nada.
+
+FORMATO DE SALIDA:
+
+ASUNTO: [sin emoji, con el hecho más relevante]
+
+## Informe Liga Endesa: {ultima_jornada_label}
+
+### MVP y Puntos Clave
+[máx. 2-3 párrafos. Arranca con el dato. Co-MVPs = mismo espacio para cada uno.
+Menciona a 1-2 jugadores destacados más si aportan algo a la narrativa.]
+
+### Radar de Eficiencia
+[máx. 4 bullets o 2 párrafos. ORTG mejor y peor, AST ratio, TO ratio.
+Inferencia táctica. Entrenadores. Opinión con criterio.]{bloque_outsider_formato}
+
+### En Racha (3 jornadas)
+{txt_trends}"""
+
+# ==============================================================================
+# 7. GENERACIÓN CON GEMINI
+# ==============================================================================
 try:
-    print(f"🚀 Generando crónica premium para {ultima_jornada_label} (Modo Conciso)...")
-    # SE ELIMINÓ tools="google_search" PARA QUE NO DE ERROR
+    print(f"Generando newsletter para {ultima_jornada_label}...")
     model = genai.GenerativeModel(model_name=MODEL_NAME)
-    response = model.generate_content(prompt)
+    response = model.generate_content(
+        prompt,
+        generation_config=genai.types.GenerationConfig(temperature=0.7)
+    )
     texto = response.text.replace(":\n-", ":\n\n-")
     guardar_salida(texto)
 except Exception as e:
