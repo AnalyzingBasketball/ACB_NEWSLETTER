@@ -142,13 +142,50 @@ for _, row in mejores.iterrows():
                     f"{b(row['AST'])} AST, USG%: {b(row['USG%'], 1, True)}.\n")
     mejores_ids.append(row['PlayerID'])
 
+# --- OTROS DESTACADOS (top 5 excluyendo MVPs, con más detalle) ---
 resto = df_week[~df_week['PlayerID'].isin(mejores_ids)]
-top_rest = resto.sort_values('VAL', ascending=False).head(3)
+top_rest = resto.sort_values('VAL', ascending=False).head(5)
 txt_rest = ""
 for _, row in top_rest.iterrows():
     r_name = clean_name(row['Name'])
-    txt_rest += f"- {r_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL, {b(row['PTS'])} PTS.\n"
+    resultado = "W" if row['Win'] == 1 else "L"
+    txt_rest += (f"- {r_name} ({get_team_name(row['Team'])}, {resultado}): "
+                 f"{b(row['VAL'])} VAL, {b(row['PTS'])} PTS, "
+                 f"{b(row['Reb_T'])} REB, {b(row['AST'])} AST, "
+                 f"TS%: {b(row['TS%'], 1, True)}.\n")
 
+# --- OUTSIDER: jugador cuya VAL de esta jornada más supera su media de temporada ---
+txt_outsider = ""
+try:
+    # Media de temporada por jugador (excluyendo esta jornada)
+    df_prev = df[df['Week'] != ultima_jornada_label]
+    if len(df_prev) > 0:
+        season_avg = df_prev.groupby(['Name', 'Team'])['VAL'].mean().reset_index()
+        season_avg.columns = ['Name', 'Team', 'VAL_avg']
+        # Solo jugadores con al menos 5 partidos previos
+        game_counts = df_prev.groupby(['Name', 'Team']).size().reset_index(name='games')
+        season_avg = season_avg.merge(game_counts, on=['Name', 'Team'])
+        season_avg = season_avg[season_avg['games'] >= 5]
+        # Merge con datos de esta jornada
+        week_data = df_week[['Name', 'Team', 'VAL', 'PTS', 'Reb_T', 'AST', 'TS%', 'Win']].copy()
+        merged = week_data.merge(season_avg, on=['Name', 'Team'], how='inner')
+        merged['VAL_delta'] = merged['VAL'] - merged['VAL_avg']
+        # Excluir MVPs del outsider
+        merged = merged[~merged['Name'].isin([row['Name'] for _, row in mejores.iterrows()])]
+        if len(merged) > 0:
+            outsider = merged.sort_values('VAL_delta', ascending=False).iloc[0]
+            o_name = clean_name(outsider['Name'])
+            resultado = "victoria" if outsider['Win'] == 1 else "derrota"
+            txt_outsider = (f"- {o_name} ({get_team_name(outsider['Team'])}, {resultado}): "
+                           f"{b(outsider['VAL'])} VAL esta jornada vs {b(outsider['VAL_avg'], 1)} de media en temporada "
+                           f"(+{outsider['VAL_delta']:.1f}). {b(outsider['PTS'])} PTS, "
+                           f"{b(outsider['Reb_T'])} REB, {b(outsider['AST'])} AST, "
+                           f"TS%: {b(outsider['TS%'], 1, True)}.")
+except Exception as e:
+    print(f"Aviso: no se pudo calcular outsider: {e}")
+    txt_outsider = ""
+
+# --- EFICIENCIA EQUIPOS (mejor ataque, peor ataque, mejor fluidez, mejor control) ---
 team_agg = df_week.groupby('Team').agg({
     'PTS': 'sum', 'Game_Poss': 'mean', 'Reb_T': 'sum', 'AST': 'sum', 'TO': 'sum'
 }).reset_index()
@@ -157,11 +194,13 @@ team_agg['AST_Ratio'] = (team_agg['AST'] / team_agg['Game_Poss']) * 100
 team_agg['TO_Ratio'] = (team_agg['TO'] / team_agg['Game_Poss']) * 100
 
 best_offense = team_agg.sort_values('ORTG', ascending=False).iloc[0]
+worst_offense = team_agg.sort_values('ORTG', ascending=True).iloc[0]
 best_passing = team_agg.sort_values('AST_Ratio', ascending=False).iloc[0]
 most_careful = team_agg.sort_values('TO_Ratio', ascending=True).iloc[0]
 
 txt_teams = f"""
 - Mejor Ataque: {get_team_name(best_offense['Team'])} ({COACH_MAP.get(best_offense['Team'], 'su técnico')}) con {b(best_offense['ORTG'], 1)} pts/100 pos.
+- Peor Ataque: {get_team_name(worst_offense['Team'])} ({COACH_MAP.get(worst_offense['Team'], 'su técnico')}) con {b(worst_offense['ORTG'], 1)} pts/100 pos.
 - Mejor Fluidez: {get_team_name(best_passing['Team'])} ({COACH_MAP.get(best_passing['Team'], 'su técnico')}) con {b(best_passing['AST_Ratio'], 1)} ast/100 pos.
 - Mejor Control: {get_team_name(most_careful['Team'])} ({COACH_MAP.get(most_careful['Team'], 'su técnico')}) con {b(most_careful['TO_Ratio'], 1)} pérdidas/100 pos.
 """
@@ -189,6 +228,13 @@ if num_mvps > 1:
 else:
     mvp_instruccion = "MVP único: un solo jugador lidera la valoración."
 
+# Bloque outsider para el prompt (solo si se calculó)
+bloque_outsider_datos = ""
+bloque_outsider_formato = ""
+if txt_outsider:
+    bloque_outsider_datos = f"\n--- OUTSIDER DE LA JORNADA (mayor salto vs su media) ---\n{txt_outsider}\n"
+    bloque_outsider_formato = """\n### Nombre Propio\n[1 párrafo sobre el outsider. Usa el contraste entre su media de temporada y lo que hizo esta jornada.\nNo hace falta que sea largo. Una observación con criterio vale más que tres frases de relleno.]"""
+
 prompt = f"""Eres el autor de la newsletter 'Analyzing Basketball' sobre la Liga Endesa (ACB).
 
 Tu voz: formal pero sin rigidez, analítica pero no académica. Escribes como alguien que
@@ -202,10 +248,10 @@ JORNADA: {ultima_jornada_label}
 
 --- DATOS MVP(S) ---
 {txt_mejores}
---- OTROS DESTACADOS ---
+--- OTROS DESTACADOS (top 5) ---
 {txt_rest}
 --- EFICIENCIA EQUIPOS ---
-{txt_teams}
+{txt_teams}{bloque_outsider_datos}
 --- FORMA RECIENTE (3 jornadas) ---
 {txt_trends}
 
@@ -278,6 +324,7 @@ PATRONES DEL AUTOR QUE DEBES REPLICAR:
 - Contraste inesperado: "No necesitó dominar el balón para dominar el partido."
 - Sin conectores vacíos: NUNCA "por otro lado", "cabe destacar", "en este sentido", "es importante señalar".
 - Cuando algo es llamativo, lo dice sin rodeos. Cuando no lo es, no lo fuerza.
+- Menciona a otros jugadores destacados cuando aporten algo a la narrativa, no como lista.
 
 === PARES INCORRECTO / CORRECTO — aprende la diferencia ===
 
@@ -299,7 +346,7 @@ CORRECTO: "Donde realmente hizo daño fue en el rebote: 13."
 === FIN PARES ===
 
 REGLAS ABSOLUTAS:
-1. LONGITUD: máximo 350 palabras en el cuerpo (bullets de "En Racha" no cuentan).
+1. LONGITUD: entre 400 y 550 palabras en el cuerpo (bullets de "En Racha" no cuentan).
 2. ARRANQUE: primera frase = dato concreto. Sin "Una nueva jornada..." ni similares.
 3. SIN CIERRE: sin despedidas. El texto termina con el último dato o idea.
 4. SIN EMOJIS: en ninguna parte.
@@ -328,10 +375,12 @@ ASUNTO: [sin emoji, con el hecho más relevante]
 ## Informe Liga Endesa: {ultima_jornada_label}
 
 ### MVP y Puntos Clave
-[máx. 2 párrafos. Arranca con el dato. Co-MVPs = mismo espacio para cada uno.]
+[máx. 2-3 párrafos. Arranca con el dato. Co-MVPs = mismo espacio para cada uno.
+Menciona a 1-2 jugadores destacados más si aportan algo a la narrativa.]
 
 ### Radar de Eficiencia
-[máx. 3 bullets o 1 párrafo. ORTG, AST ratio, TO ratio. Inferencia táctica. Entrenadores.]
+[máx. 4 bullets o 2 párrafos. ORTG mejor y peor, AST ratio, TO ratio.
+Inferencia táctica. Entrenadores. Opinión con criterio.]{bloque_outsider_formato}
 
 ### En Racha (3 jornadas)
 {txt_trends}"""
