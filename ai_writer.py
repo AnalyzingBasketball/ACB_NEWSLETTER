@@ -1,6 +1,6 @@
 import pandas as pd
 import os
-import anthropic
+import google.generativeai as genai
 import sys
 import re
 import numpy as np
@@ -8,7 +8,7 @@ import numpy as np
 # ==============================================================================
 # 1. CONFIGURACIÓN ESPECIAL LIGA ENDESA (ACB)
 # ==============================================================================
-MODEL_NAME = "claude-sonnet-4-5"
+MODEL_NAME = "gemini-2.5-flash"
 FILE_PATH = "data/BoxScore_ACB_2025_Cumulative.csv"
 
 # Mapa de Equipos (Los 18 de la Liga Endesa)
@@ -106,9 +106,9 @@ def clean_name(name_raw):
 # ==============================================================================
 # 4. CARGA DE DATOS Y EXTRACCIÓN DE LA JORNADA
 # ==============================================================================
-api_key = os.environ.get("ANTHROPIC_API_KEY")
-if not api_key: guardar_salida("❌ Error: Falta ANTHROPIC_API_KEY.")
-client = anthropic.Anthropic(api_key=api_key)
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key: guardar_salida("❌ Error: Falta GEMINI_API_KEY.")
+genai.configure(api_key=api_key)
 
 if not os.path.exists(FILE_PATH): guardar_salida(f"❌ No hay CSV en {FILE_PATH}.")
 df = pd.read_csv(FILE_PATH)
@@ -125,6 +125,9 @@ df_week = df[df['Week'] == ultima_jornada_label]
 
 print(f"Analizando {ultima_jornada_label}...")
 
+# Detectar si hay co-MVPs (empate en VAL)
+num_mvps = len(mejores) if 'mejores' in dir() else 1
+
 # ==============================================================================
 # 5. PREPARACIÓN DE DATOS (Top Performers, Equipos, Tendencias)
 # ==============================================================================
@@ -135,6 +138,7 @@ pool = ganadores if not ganadores.empty else df_week
 
 max_val = pool['VAL'].max()
 mejores = pool[pool['VAL'] == max_val]
+num_mvps = len(mejores)
 
 txt_mejores = ""
 mejores_ids = []
@@ -142,7 +146,8 @@ mejores_ids = []
 for _, row in mejores.iterrows():
     m_name = clean_name(row['Name'])
     txt_mejores += (f"- {m_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL, "
-                f"{b(row['PTS'])} PTS (TS%: {b(row['TS%'], 1, True)}), {b(row['Reb_T'])} REB.\n")
+                f"{b(row['PTS'])} PTS (TS%: {b(row['TS%'], 1, True)}), {b(row['Reb_T'])} REB, "
+                f"{b(row['AST'])} AST, USG%: {b(row['USG%'], 1, True)}.\n")
     mejores_ids.append(row['PlayerID'])
 
 # B. DESTACADOS SECUNDARIOS
@@ -151,7 +156,7 @@ top_rest = resto.sort_values('VAL', ascending=False).head(3)
 txt_rest = ""
 for _, row in top_rest.iterrows():
     r_name = clean_name(row['Name'])
-    txt_rest += f"- {r_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL.\n"
+    txt_rest += f"- {r_name} ({get_team_name(row['Team'])}): {b(row['VAL'])} VAL, {b(row['PTS'])} PTS.\n"
 
 # C. EQUIPOS DE LA JORNADA
 team_agg = df_week.groupby('Team').agg({
@@ -166,9 +171,9 @@ best_passing = team_agg.sort_values('AST_Ratio', ascending=False).iloc[0]
 most_careful = team_agg.sort_values('TO_Ratio', ascending=True).iloc[0]
 
 txt_teams = f"""
-- Mejor Ataque: {get_team_name(best_offense['Team'])} (Entrenador: {COACH_MAP.get(best_offense['Team'], 'su técnico')}) con {b(best_offense['ORTG'], 1)} pts/100.
-- Fluidez: {get_team_name(best_passing['Team'])} (Entrenador: {COACH_MAP.get(best_passing['Team'], 'su técnico')}) con {b(best_passing['AST_Ratio'], 1)} ast/100.
-- Control: {get_team_name(most_careful['Team'])} (Entrenador: {COACH_MAP.get(most_careful['Team'], 'su técnico')}) con {b(most_careful['TO_Ratio'], 1)} perdidas/100.
+- Mejor Ataque: {get_team_name(best_offense['Team'])} (Entrenador: {COACH_MAP.get(best_offense['Team'], 'su técnico')}) con {b(best_offense['ORTG'], 1)} pts/100 posesiones.
+- Mejor Fluidez: {get_team_name(best_passing['Team'])} (Entrenador: {COACH_MAP.get(best_passing['Team'], 'su técnico')}) con {b(best_passing['AST_Ratio'], 1)} ast/100 posesiones.
+- Mejor Control: {get_team_name(most_careful['Team'])} (Entrenador: {COACH_MAP.get(most_careful['Team'], 'su técnico')}) con {b(most_careful['TO_Ratio'], 1)} pérdidas/100 posesiones.
 """
 
 # D. TENDENCIAS (Últimas 3 Jornadas)
@@ -181,78 +186,75 @@ if len(jornadas_unicas) >= 1:
     for _, row in hot.iterrows():
         t_name = clean_name(row['Name'])
         txt_trends += (f"- {t_name} ({get_team_name(row['Team'], False)}): "
-                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, {b(row['AST'], 1)} AST.\n")
+                       f"{b(row['VAL'], 1)} VAL, {b(row['PTS'], 1)} PTS, "
+                       f"{b(row['AST'], 1)} AST, TS%: {b(row['TS%'], 1, True)}.\n")
 
 # ==============================================================================
-# 6. INSTRUCCIONES ESPECÍFICAS PARA LA JORNADA
-# ==============================================================================
-instrucciones_especificas = """
-INSTRUCCIONES ESPECÍFICAS PARA LA JORNADA LIGUERA:
-1. ANÁLISIS DEL MVP: Basa tu análisis del MVP ESTRICTAMENTE en el jugador con mayor valoración (VAL) de los datos proporcionados arriba. Nómbralo en el primer párrafo y analiza su hoja estadística.
-2. CONTEXTO LIGUERO: Menciona la importancia de esta actuación para su equipo en el contexto de la larga liga regular (ganar fuera, mantenerse arriba, etc.).
-3. ANÁLISIS TÁCTICO INFERIDO (CRÍTICO): No tienes acceso a vídeo ni al play-by-play del partido. Cuando analices jugadas o situaciones tácticas, DEBES enmarcarlas explícitamente como inferencias estadísticas. Usa fórmulas como "El perfil de USG% y TS% sugiere que...", "Los datos apuntan a que el sistema de...", "La ratio de AST/TO indica que...". ESTÁ TOTALMENTE PROHIBIDO narrar acciones concretas en tiempo real ("en el minuto 34", "el jugador recibió el balón y...").
-4. Analiza el RITMO DEL PARTIDO basándote en los datos estadísticos de equipos proporcionados (ORTG, posesiones, ratios).
-"""
-
-# ==============================================================================
-# 7. GENERACIÓN IA CON CLAUDE (MODO CONCISO)
+# 6. CONSTRUCCIÓN DEL PROMPT
 # ==============================================================================
 
-prompt = f"""
-    Actúa como un analista de baloncesto profesional y periodista deportivo de élite.
-    Estás redactando la newsletter 'Analyzing Basketball' sobre la Liga Endesa (ACB).
-    
-    JORNADA ACTUAL: {ultima_jornada_label}
-    
-    DATOS DE LOS JUGADORES (Top Performers Estadísticos):
-    {txt_mejores}
-    {txt_rest}
-    
-    DATOS DE LOS EQUIPOS (Eficiencia y Entrenadores):
-    {txt_teams}
-    
-    ESTADO DE FORMA (Promedios últimas 3 jornadas):
-    {txt_trends}
-    
-    {instrucciones_especificas}
-    
-    REGLAS DE ESTILO (MUY ESTRICTAS Y DE OBLIGADO CUMPLIMIENTO):
-    1. TONO Y AUDIENCIA: Profesional, analítico y estrictamente periodístico. Escribes para expertos en baloncesto en ESPAÑA. Transmite la dificultad de la liga regular ACB.
-    2. IDIOMA (ESPAÑOL DE ESPAÑA PURO): Tienes TERMINANTEMENTE PROHIBIDO usar vocabulario latinoamericano. Usa "mate" (nunca volcada), "parqué/cancha" (nunca duela), y "tiros libres" (nunca lanzamiento de personal).
-    3. CERO EMOJIS (CRÍTICO): Está TOTALMENTE PROHIBIDO usar emojis en cualquier parte del texto. NI UNO SOLO en el asunto, NI en los títulos, NI en el cuerpo.
-    4. TRATO AL LECTOR (IMPERSONAL): NO te dirijas al lector bajo ningún concepto. Tienes PROHIBIDO usar "tú", PROHIBIDO usar "vosotros" y PROHIBIDO tratar de "usted". Escribe exclusivamente en tercera persona o usando formas impersonales ("se observa", "el equipo logró", "destaca"). Cero preguntas retóricas.
-    5. ENTRENADORES Y ALUCINACIONES: Usa estrictamente los nombres de los entrenadores proporcionados en los datos. No inventes rotaciones.
-    6. RITMO Y VOZ ACTIVA: Cero dramatismos literarios ("a vida o muerte", "clavo en el ataúd"). Escribe en voz activa. Que los datos sostengan tu análisis.
-    7. VOCABULARIO DE PARQUÉ: Usa terminología técnica real de baloncesto con naturalidad (spacing, pick & roll central, mismatch, IQ, colapso defensivo, tiro tras bote, generación de ventajas, lado débil).
-    8. CONCISIÓN EXTREMA (CRÍTICO): La newsletter debe ser escueta, hiper-directa y fácil de escanear visualmente. Elimina toda la "paja" y las introducciones largas. Ve directo al grano usando frases cortas.
-    9. FORMATO DE DATOS (CRÍTICO): Es OBLIGATORIO que todos los números estadísticos (puntos, rebotes, valoración, porcentajes, etc.) que escribas en el texto vayan en negrita usando el formato Markdown (**número**).
+# Texto condicional para MVP único o co-MVPs
+if num_mvps > 1:
+    mvp_instruccion = f"""CO-MVPs DE LA JORNADA (CRÍTICO): Esta jornada hay {num_mvps} jugadores empatados \
+en la máxima valoración. Ambos son co-MVPs con IGUAL peso en el análisis. \
+Dedica espacio equivalente a cada uno. No elijas uno principal y menciones al otro de pasada."""
+else:
+    mvp_instruccion = """MVP DE LA JORNADA: Hay un único jugador con la máxima valoración. \
+Céntralo como protagonista principal del análisis."""
 
-    ESTRUCTURA DE SALIDA (ESTRICTA):
-    ASUNTO: [Escribe aquí un asunto atractivo, muy profesional, que denote la jornada, basado en los mejores datos y ESTRICTAMENTE SIN NINGÚN EMOJI]
+prompt = f"""Actúa como un analista de baloncesto profesional y periodista deportivo de élite.
+Estás redactando la newsletter semanal 'Analyzing Basketball' sobre la Liga Endesa (ACB).
 
-    ## Informe Liga Endesa: {ultima_jornada_label}
+JORNADA ACTUAL: {ultima_jornada_label}
 
-    ### MVP y Puntos Clave de la Jornada
-    [Crónica hiper-concisa. MÁXIMO 2 párrafos cortos (3-4 líneas cada uno). Combina el análisis del rendimiento estadístico con el contexto de la competición liguera. Aporta los datos sin rodeos.]
+DATO CRÍTICO — {mvp_instruccion}
 
-    ### Radar de Eficiencia y Pizarra Táctica
-    [Análisis directo y escueto. MÁXIMO 1 párrafo corto o una breve lista de viñetas (bullet points). Usa los datos de Puntos por 100 posesiones, Asistencias o Pérdidas y menciona a sus entrenadores reales proporcionados. Ve directamente a la conclusión táctica.]
+DATOS MVP(S) DE LA JORNADA:
+{txt_mejores}
+OTROS DESTACADOS:
+{txt_rest}
 
-    ### Jugadores en Racha (Últimas 3 Jornadas)
-    [Enumera a los 5 jugadores con mayor valoración acumulada reciente en este formato exacto, usando guiones:]
-    {txt_trends}
-"""
+EFICIENCIA DE EQUIPOS:
+{txt_teams}
 
+ESTADO DE FORMA — Promedios últimas 3 jornadas (usa estos datos TAL CUAL en la sección final):
+{txt_trends}
+
+REGLAS ABSOLUTAS — incumplirlas invalida el texto:
+1. LONGITUD TOTAL MÁXIMA: 350 palabras en todo el cuerpo (excluye el ASUNTO y los bullet points de la sección de racha). Sé quirúrgico.
+2. ARRANQUE DIRECTO: La primera frase del cuerpo debe ser el dato más importante. PROHIBIDO empezar con introducción genérica tipo "Una nueva jornada...", "La Liga Endesa nos dejó..." o similar.
+3. CIERRE LIMPIO: PROHIBIDO cualquier frase de despedida o cierre tipo "Hasta la próxima", "Nos vemos en la siguiente jornada" o similar. El texto termina con el último dato.
+4. CERO EMOJIS: Prohibido en asunto, títulos y cuerpo. Ni uno.
+5. IMPERSONAL: Prohibido dirigirse al lector. Sin "tú", "vosotros", "usted". Solo tercera persona o formas impersonales.
+6. ESPAÑOL DE ESPAÑA: "mate" (nunca volcada), "cancha/parqué" (nunca duela), "tiros libres" (nunca lanzamiento personal).
+7. ANÁLISIS TÁCTICO SOLO INFERIDO: No tienes acceso a vídeo ni play-by-play. Cualquier observación táctica DEBE estar explícitamente enmarcada como inferencia estadística. Usa fórmulas como "El USG% de X sugiere que...", "La ratio AST/TO apunta a...", "Con un ORTG de X, el sistema de [entrenador] parece...". PROHIBIDO narrar acciones concretas en tiempo real ("en el minuto 34...", "recibió el balón y...").
+8. ENTRENADORES: Usa exclusivamente los nombres proporcionados en los datos de equipos. No inventes.
+9. DATOS EN NEGRITA: Todos los números estadísticos van en **negrita** Markdown.
+10. VOZ ACTIVA: Sin dramatismos literarios. Los datos sostienen el análisis.
+
+ESTRUCTURA DE SALIDA — respeta este formato exacto:
+
+ASUNTO: [asunto periodístico, sin emoji, que refleje el dato más llamativo de la jornada]
+
+## Informe Liga Endesa: {ultima_jornada_label}
+
+### MVP y Puntos Clave
+[Máximo 2 párrafos cortos. Arranca con el dato. Análisis del/los MVP(s) con contexto liguero.]
+
+### Radar de Eficiencia
+[Máximo 1 párrafo o lista corta de bullets. Datos de ORTG, AST ratio, TO ratio con inferencia táctica. Menciona entrenadores.]
+
+### En Racha (últimas 3 jornadas)
+{txt_trends}"""
+
+# ==============================================================================
+# 7. GENERACIÓN CON GEMINI
+# ==============================================================================
 try:
-    print(f"Generando crónica para {ultima_jornada_label} con Claude...")
-    message = client.messages.create(
-        model=MODEL_NAME,
-        max_tokens=1500,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-    texto = message.content[0].text.replace(":\n-", ":\n\n-")
+    print(f"Generando newsletter para {ultima_jornada_label}...")
+    model = genai.GenerativeModel(model_name=MODEL_NAME)
+    response = model.generate_content(prompt)
+    texto = response.text.replace(":\n-", ":\n\n-")
     guardar_salida(texto)
 except Exception as e:
-    guardar_salida(f"❌ Error Claude API: {e}")
+    guardar_salida(f"❌ Error Gemini: {e}")

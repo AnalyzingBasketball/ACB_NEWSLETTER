@@ -1,6 +1,6 @@
 requests
 pandas
 beautifulsoup4
-anthropic>=0.40.0
+google-generativeai>=0.8.3
 markdown
 numpy
