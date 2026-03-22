@@ -2,7 +2,7 @@ name: Auto ACB Newsletter
 
 on:
   schedule:
-    - cron: '0 7 * * *' # Ejecución diaria a las 08:00 AM (hora España)
+    - cron: '0 7 * * *' # Ejecución diaria a las 08:00 AM UTC (09:00 CET / 10:00 CEST)
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,8 @@ permissions:
 jobs:
   run-process:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 90
+
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
@@ -23,23 +24,23 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install requests pandas beautifulsoup4 google-generativeai markdown
+        pip install requests pandas beautifulsoup4 anthropic markdown numpy
 
     - name: Ejecutar Check Status
       env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         GMAIL_USER: ${{ secrets.GMAIL_USER }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
         URL_SUSCRIPTORES: ${{ secrets.URL_SUSCRIPTORES }}
         MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
       run: python check_status.py
-      
+
     - name: Guardar cambios en Data
       run: |
         git config --global user.name 'ACB Bot'
         git config --global user.email 'bot@noreply.github.com'
-        
+
         git add .
         git commit -m "Auto: Update Data & Status [skip ci]" || echo "Nada que commitear"
-        git pull --rebase origin main || git pull --rebase origin master
+        git pull --rebase origin mejoras
         git push
